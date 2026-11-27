@@ -936,3 +936,34 @@ three metrics and strictly better in at least one. Ties preserved.
 All 11 core checks passed in JS isolate, including exact integer overflow
 avoidance and ties; all 32 workload traces replayed with independent oracle
 checks. Native CI for new tool pending. Run `node scripts/nexusvi_cache_cost.js`.
+
+## Independent snapshot batch coalescing
+
+CI 45992596689 passed on both platforms: 11 cost checks and 210 scenarios
+confirmed, aggregate unique winners second=21 and size=14 of 35. The cache
+phase is retained without production policy selection.
+
+New logical batch model coalesces pure set/delete operations by key, with
+last operation winning within each bounded batch. Flush after 16 or 64
+updates, on explicit barrier, or at end. Optional no-op filtering checks
+current state once per coalesced key. It is valid only where intermediate
+states, operation ordering, acknowledgements and side effects are not
+observable; not a general transaction engine. The array oracle and eager
+map are compared with both batch variants at every flush/barrier and end.
+Six crafted cases and 15552 exhaustive length-five histories
+passed in JS isolate; twelve deterministic synthetic runs. Observed
+backend mutation attempts (including no-op deletes) and filter reads:
+
+| Profile | Batch limit | Eager | Coalesced | Filtered | Filter reads | Checkpoints |
+|---|---:|---:|---:|---:|---:|---:|
+| uniform | 16 | 8192 | 7970 | 7524 | 7970 | 578 |
+| uniform | 64 | 8192 | 7282 | 6853 | 7282 | 194 |
+| hot | 16 | 8192 | 3644 | 3482 | 3644 | 578 |
+| hot | 64 | 8192 | 1024 | 977 | 1024 | 194 |
+| repeated | 16 | 8192 | 512 | 224 | 512 | 578 |
+| repeated | 64 | 8192 | 512 | 224 | 512 | 194 |
+
+Counts exclude Map operations in the buffer; no wall time, storage I/O,
+physical memory or runtime performance claim. No-op filtering exchanges
+reads for fewer mutation attempts. Native CI pending.
+Run `node scripts/nexusvi_batch_coalesce.js`.
