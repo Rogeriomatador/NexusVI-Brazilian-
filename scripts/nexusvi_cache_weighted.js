@@ -103,4 +103,4 @@ function experiment(){
   return {scope:'independent_weighted_logical_cache_only',tests:test,results};
 }
 if(require.main===module){assert.equal(process.argv.length,2);console.log(JSON.stringify(experiment(),null,2));}
-module.exports={WeightedCache,replay,workload,tests,experiment};
+module.exports={WeightedCache,replay,workload,tests,experiment,reference};

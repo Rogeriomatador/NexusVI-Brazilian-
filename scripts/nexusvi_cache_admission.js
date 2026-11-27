@@ -80,4 +80,4 @@ function experiment(){
   return {scope:'independent_weighted_cache_admission_only',tests:test,results};
 }
 if(require.main===module){assert.equal(process.argv.length,2);console.log(JSON.stringify(experiment(),null,2));}
-module.exports={AdmissionCache,replay,tests,experiment};
+module.exports={AdmissionCache,replay,tests,experiment,reference};

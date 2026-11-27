@@ -845,3 +845,22 @@ Additional seed alone:
 Filtered misses are not hits. Metadata key counts are not physical memory
 costs. Extra seeds reuse workload families; no timing or runtime gain
 claimed. Native CI pending. Run `node scripts/nexusvi_cache_admission.js`.
+
+## Independent weighted-cache timing
+
+Admission CI 45991632678 passed on both platforms; recomputed hits 37498
+LRU, 40851 second-touch, 40831 second4. New timing experiment uses all
+24 existing traces, separated into four profiles, each 24000 accesses per
+sample. Eighteen measured rounds with all six execution orders balanced,
+three warmup rounds per profile. Before timing, independent timestamp
+oracles generate expected events and final resident/history states. Timed
+region includes construction, request dispatch, policy logic and outcome
+recording; outside timing compare every hit, bypass, filtered miss,
+eviction sequence and final state. No actual payload allocation or I/O.
+Nine synthetic analyzer/harness checks passed, and all 24 plans were
+constructed. Full uniform profile ran 54 measured replays (1296000
+requests) using a simulated clock in JS isolate with structural assertions.
+No native timing claim yet. Native CI will measure all four profiles
+(216 samples, 5184000 measured accesses), recording raw samples and
+within-round ratios. Existing algorithms unchanged except oracle exports.
+Run `node scripts/nexusvi_cache_timing.js`.
