@@ -390,3 +390,39 @@ placement and nonadvancing clock). All three implementations also reproduced
 clock for verification only. No measured timings are claimed from that test.
 The native Node timing run is scheduled in independent CI. No game, physical
 GPU or inherited runtime is involved.
+
+## Timing report verification and paired analysis
+
+The dependency-free timing report tool validates the fixed 18-round protocol,
+all six balanced orders, counts, positive bounded durations and recomputed
+statistics. It reports within-round speedup medians, wins/ties/losses,
+order-specific median ratios, position medians and first/last six-round
+medians. These are descriptive diagnostics, not confidence intervals or
+proof of provenance. JSON input is limited to 256 KiB; duplicate member
+detection is not implemented. Eleven fixture cases passed in a JS isolate
+with equivalent strict assertions; both real reports from CI run 45986926218
+were independently parsed from logs and analyzed with the same implementation.
+
+| Platform | Pair (baseline / candidate) | Median paired speedup | Candidate wins | Losses |
+|---|---|---:|---:|---:|
+| linux | linear_over_dense | 1.4991 | 18 | 0 |
+| linux | linear_over_sparse | 1.5251 | 18 | 0 |
+| linux | dense_over_sparse | 1.0149 | 14 | 4 |
+| win32 | linear_over_dense | 1.1709 | 17 | 1 |
+| win32 | linear_over_sparse | 1.3146 | 17 | 1 |
+| win32 | dense_over_sparse | 1.1165 | 17 | 1 |
+
+| Platform | Policy | Median ns | P95 ns | First six median ns | Last six median ns |
+|---|---|---:|---:|---:|---:|
+| linux | linear | 15128004 | 23079874 | 15549530.5 | 15051760 |
+| linux | dense | 10138012 | 14171181 | 10122417 | 10138012 |
+| linux | sparse | 9931914 | 13324950 | 10051438.5 | 9937920.5 |
+| win32 | linear | 9235450 | 20123700 | 9957650 | 9068150 |
+| win32 | dense | 7807350 | 10284000 | 7852600 | 7727350 |
+| win32 | sparse | 7038500 | 13148300 | 7172000 | 6958250 |
+
+The Windows and Linux runners differ in hardware and Node version; do not
+pool them. With only 18 samples, nearest-rank P95 is the maximum. These
+measure instrumented logical allocators on this synthetic workload only.
+CI saves its current timing report and verifies it independently before
+reporting paired diagnostics. No inherited runtime or game benchmark.
