@@ -48,3 +48,21 @@ a performance improvement.
 
 Audit the existing synthetic test inventory, establish a local baseline,
 and select general-purpose correctness work based on measured evidence.
+
+## Matched benchmark comparison
+
+The standalone GPL-3.0-or-later tool `scripts/nexusvi_compare.rs` compares two
+files of timings from original synthetic workloads. Compile it with
+`rustc +stable --edition=2024 scripts/nexusvi_compare.rs -o nexusvi_compare`.
+Each input has three header lines: `revision=<40 hex digits>`,
+`context=<identical workload, settings, hardware, OS, driver, toolchain description>`,
+and `pair_id,ms`. Each following line contains a unique unsigned pair ID and
+one positive finite timing. Use at least 20 matched pairs from alternating
+runs, with identical workload and settings. Input files are limited to 8 MiB.
+The tool rejects differing declared contexts, duplicate or unmatched IDs,
+identical revisions and nonrepresentable timing ratios. It reports candidate
+/ baseline median, p95 and median paired ratios, plus slower-pair counts.
+Exit 2 flags a descriptive regression (median or paired median > 1.05, or
+p95 > 1.10); exit 1 means invalid input; exit 0 means within those thresholds.
+Neither the screen nor identical context strings establish statistical
+significance or independently verify the environment. Do not infer GPU coverage.
