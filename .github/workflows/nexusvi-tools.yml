@@ -24,6 +24,7 @@ on:
       - 'scripts/nexusvi_timing_context.js'
       - 'scripts/nexusvi_repeatability.js'
       - 'scripts/nexusvi_interleaved_control.js'
+      - 'scripts/nexusvi_cache_policies.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -206,6 +207,10 @@ jobs:
       - name: Measure interleaved identical and alternative logical allocators
         run: |
           node scripts/nexusvi_interleaved_control.js
+          exit $LASTEXITCODE
+      - name: Verify independent logical cache policies
+        run: |
+          node scripts/nexusvi_cache_policies.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |

@@ -706,3 +706,38 @@ still influence results. Existing implementation behavior is unchanged,
 only harness exports added. Ten synthetic checks and 108 full-suite measured
 path executions (1036800 requests) passed in a JS isolate with a synthetic
 clock. Native timings pending CI. Run `node scripts/nexusvi_interleaved_control.js`.
+
+## Independent logical cache policy experiment
+
+Interleaved CI 45990365981 passed. Observed A/A absolute median log ratio
+and B/original relative to the geometric mean of two V2 controls:
+
+| Runner | A/A absolute median log ratio | B/A median ratio | B slower than both | B faster than both |
+|---|---:|---:|---:|---:|
+| standalone (ubuntu-latest) | 0.008078 | 1.031048 | 33/36 | 1/36 |
+| standalone (windows-latest) | 0.011146 | 1.031493 | 30/36 | 2/36 |
+
+Close this measurement-infrastructure phase; no causal or universal
+performance threshold inferred. New independent experiment compares FIFO,
+LRU and segmented LRU with a protected segment limited to floor(cap/2).
+Misses enter probation; probation hits promote; protected overflow demotes
+its oldest key; misses at full capacity evict oldest probation key. An
+array oracle verifies every hit, eviction and ordering, with bounded unique
+resident keys. Six crafted checks and 24576 exhaustive length-six
+histories (four keys, capacities 2 and 3, all policies) passed. Sixteen
+6000-access traces (capacities 32/128, two seeds, four profiles) passed in
+JS isolate with equivalent strict assertions, 288000 accesses across
+policies. Observed hits, aggregated per profile across four traces:
+
+| Profile | Requests per policy | FIFO | LRU | SLRU |
+|---|---:|---:|---:|---:|
+| uniform | 24000 | 6058 | 6029 | 6068 |
+| hot_scan | 24000 | 10335 | 10335 | 12139 |
+| phase_shift | 24000 | 18766 | 19154 | 19036 |
+| cyclic | 24000 | 0 | 0 | 0 |
+
+Each key consumes one logical slot; no byte weighting, physical cache,
+latency, timing or production integration. Cyclic traces intentionally do
+not depend on seed and are repeated for uniform experiment structure;
+counts are not independent statistical samples. Native CI pending.
+Run `node scripts/nexusvi_cache_policies.js`.
