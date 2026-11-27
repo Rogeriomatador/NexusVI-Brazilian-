@@ -967,3 +967,38 @@ Counts exclude Map operations in the buffer; no wall time, storage I/O,
 physical memory or runtime performance claim. No-op filtering exchanges
 reads for fewer mutation attempts. Native CI pending.
 Run `node scripts/nexusvi_batch_coalesce.js`.
+
+## Independent adaptive snapshot batching
+
+CI 45993134049 passed on Windows and Linux, confirming 49152 updates,
+20944 coalesced writes, 19284 filtered writes, 20944 filter reads and
+2316 snapshot checks. Adaptive policy starts at 16 updates per batch,
+doubles on a full batch with at least half redundant keys, halves on a
+full batch with at most one eighth redundant keys; bounded to [16,64].
+Explicit barriers flush; partial flushes do not change target.
+Array state and separate boundary model verify state, target and logical
+waiting counts. Waiting is subsequent updates before flush, not time;
+each batch of n contributes n(n-1)/2. All variants filter no-op writes.
+Nine crafted checks and 3125 exhaustive short histories passed
+in JS isolate. Twelve traces include mixed phases every 512 updates,
+three deterministic seeds, 147456 comparative updates.
+
+| Profile | Policy | Updates | Writes | Reads | Flushes | Sum waiting updates | Peak batch | Changes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| uniform | fixed16 | 12288 | 11278 | 11929 | 768 | 92160 | 16 | 0 |
+| uniform | fixed64 | 12288 | 10241 | 10867 | 192 | 387072 | 64 | 0 |
+| uniform | adaptive | 12288 | 11278 | 11929 | 768 | 92160 | 16 | 0 |
+| hot | fixed16 | 12288 | 5207 | 5452 | 768 | 92160 | 16 | 0 |
+| hot | fixed64 | 12288 | 1460 | 1536 | 192 | 387072 | 64 | 0 |
+| hot | adaptive | 12288 | 1499 | 1577 | 198 | 383232 | 64 | 6 |
+| repeated | fixed16 | 12288 | 338 | 768 | 768 | 92160 | 16 | 0 |
+| repeated | fixed64 | 12288 | 338 | 768 | 192 | 387072 | 64 | 0 |
+| repeated | adaptive | 12288 | 338 | 768 | 198 | 383232 | 64 | 6 |
+| mixed | fixed16 | 12288 | 6255 | 6693 | 768 | 92160 | 16 | 0 |
+| mixed | fixed64 | 12288 | 4460 | 4831 | 192 | 387072 | 64 | 0 |
+| mixed | adaptive | 12288 | 4910 | 5292 | 390 | 281856 | 64 | 30 |
+
+Adaptive is not universally superior: repeated profile gains no write
+reduction over fixed16 while waiting increases. No measured wall time,
+real storage or runtime integration. Snapshot-only semantics remain.
+Native CI pending. Run `node scripts/nexusvi_batch_adaptive.js`.

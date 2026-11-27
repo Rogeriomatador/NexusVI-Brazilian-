@@ -32,6 +32,7 @@ on:
       - 'scripts/nexusvi_cache_size_admission.js'
       - 'scripts/nexusvi_cache_cost.js'
       - 'scripts/nexusvi_batch_coalesce.js'
+      - 'scripts/nexusvi_batch_adaptive.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -246,6 +247,10 @@ jobs:
       - name: Verify independent snapshot batch coalescing
         run: |
           node scripts/nexusvi_batch_coalesce.js
+          exit $LASTEXITCODE
+      - name: Verify independent adaptive snapshot batching
+        run: |
+          node scripts/nexusvi_batch_adaptive.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |
