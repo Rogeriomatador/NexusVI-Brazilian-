@@ -117,3 +117,29 @@ Seven tests include an exhaustive bounded bitmap comparison and a deterministic
 20,000-operation sequence. CI compiles the independent model and executes a
 small reclamation demonstration. Build with
 `rustc +stable --edition=2024 -O scripts/nexusvi_range_arena.rs -o nexusvi_arena`.
+
+## Windows hardware control report
+
+The independent PowerShell script `scripts/nexusvi_hardware_control.ps1`
+launches only its own fixed SHA-256 chain CPU workload and records sampled
+process CPU time, working set and private bytes. It cannot select or attach
+to another executable. Hardware metadata uses best-effort CIM inventory,
+including GPU model and driver, not GPU measurements. The source identity
+contains the script SHA-256 and, when available, Git HEAD and tracked-change
+status; untracked changes are not checked. CPU percentages are interval
+estimates and can overshoot due to sampling or CPU timer granularity. Memory
+peaks are sampled lower bounds; observed CPU time can omit the final interval.
+FPS, VRAM, GPU load and temperature are explicitly null, not zero.
+No serial numbers, usernames, hostnames or automatic uploads are included.
+Review the JSON before sharing it; hardware models and driver details are
+included. CI validates the report on its Windows runner, not a physical GPU.
+
+Run from a Windows PowerShell session with normal local script permissions:
+
+```powershell
+& ./scripts/nexusvi_hardware_control.ps1 -Seconds 15 -SampleMs 250 |
+    Set-Content -Encoding utf8 "$env:TEMP/NexusVI-hardware-report.json"
+```
+
+The report lives outside the repository. Its purpose is to test the independent
+measurement pipeline, not to evaluate a game or the inherited runtime.

@@ -9,6 +9,7 @@ on:
       - 'scripts/nexusvi_synthetic.rs'
       - 'scripts/nexusvi_synthetic_report.rs'
       - 'scripts/nexusvi_range_arena.rs'
+      - 'scripts/nexusvi_hardware_control.ps1'
       - '.github/workflows/nexusvi-tools.yml'
   workflow_dispatch:
 
@@ -74,3 +75,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./nexusvi_arena.exe
           exit $LASTEXITCODE
+      - name: Validate Windows hardware report on synthetic child
+        if: runner.os == 'Windows'
+        run: |
+          $report = (& ./scripts/nexusvi_hardware_control.ps1 -Seconds 5 -SampleMs 250 | Out-String | ConvertFrom-Json)
+          if ($report.scope -ne 'independent_synthetic_cpu_only' -or $report.schema_version -ne 1) {
+            throw 'Unexpected report identity'
+          }
+          if ($report.metrics.sample_count -lt 2 -or $report.metrics.sample_count -ne $report.samples.Count) {
+            throw 'Invalid sample count'
+          }
+          if ($report.workload.exit_code -ne 0 -or $report.metrics.observed_cpu_total_ms -le 0) {
+            throw 'Invalid CPU observation'
+          }
+          if ($null -ne $report.metrics.fps -or $null -ne $report.metrics.vram_bytes) {
+            throw 'CPU control must not claim GPU measurements'
+          }
+          if ($report.source.collector_sha256 -notmatch '^[0-9a-f]{64}$' -or $report.source.git_revision -ne $env:GITHUB_SHA) {
+            throw 'Source identity mismatch'
+          }
+          $report | ConvertTo-Json -Depth 8 | Write-Output
