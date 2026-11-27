@@ -30,6 +30,7 @@ on:
       - 'scripts/nexusvi_cache_admission.js'
       - 'scripts/nexusvi_cache_timing.js'
       - 'scripts/nexusvi_cache_size_admission.js'
+      - 'scripts/nexusvi_cache_cost.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -236,6 +237,10 @@ jobs:
       - name: Verify independent size-sensitive cache admission
         run: |
           node scripts/nexusvi_cache_size_admission.js
+          exit $LASTEXITCODE
+      - name: Evaluate independent cache cost sensitivity
+        run: |
+          node scripts/nexusvi_cache_cost.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |

@@ -910,3 +910,29 @@ Additional seed alone:
 Metadata costs excluded from logical capacity; no payload memory or
 native timing claim for new variant. Native CI pending.
 Run `node scripts/nexusvi_cache_size_admission.js`.
+
+## Abstract weighted-cache cost sensitivity
+
+CI 45992272660 passed Windows and Linux; both native reports reproduce the
+same cost vectors and sensitivity results as the independently replayed
+32 traces. New tool compares miss count, missed logical bytes and eviction
+count, with nonnegative integer coefficients and exact BigInt arithmetic.
+The grid covers 35 nonzero combinations of coefficients per group; six
+groups yield 210 scenarios. No coefficients are calibrated to actual
+latency, I/O, power, memory or monetary cost. Metadata/admission overhead
+is excluded. Scenario counts depend on the arbitrary illustrative grid,
+not a probability distribution. Pareto dominance requires no worse in all
+three metrics and strictly better in at least one. Ties preserved.
+
+| Group | LRU unique wins | Second unique wins | Size unique wins | Ties | Pareto frontier |
+|---|---:|---:|---:|---:|---|
+| all | 0 | 21 | 14 | 0 | second, size |
+| additional | 0 | 21 | 14 | 0 | second, size |
+| uniform | 3 | 14 | 18 | 0 | lru, second, size |
+| hot_scan | 0 | 35 | 0 | 0 | second |
+| small_hot | 0 | 20 | 15 | 0 | second, size |
+| phase_shift | 0 | 21 | 14 | 0 | second, size |
+
+All 11 core checks passed in JS isolate, including exact integer overflow
+avoidance and ties; all 32 workload traces replayed with independent oracle
+checks. Native CI for new tool pending. Run `node scripts/nexusvi_cache_cost.js`.
