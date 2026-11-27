@@ -16,6 +16,7 @@ on:
       - 'scripts/nexusvi_sparse_arena_v2.js'
       - 'scripts/nexusvi_sparse_arena_v3.js'
       - 'scripts/nexusvi_sparse_arena_v4.js'
+      - 'scripts/nexusvi_sparse_scaling.js'
       - 'scripts/nexusvi_arena_timing.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
@@ -183,4 +184,8 @@ jobs:
       - name: Compare AVL successor extraction and paired timing
         run: |
           node scripts/nexusvi_sparse_arena_v4.js
+          exit $LASTEXITCODE
+      - name: Verify and measure larger fragmented AVL arenas
+        run: |
+          node scripts/nexusvi_sparse_scaling.js
           exit $LASTEXITCODE

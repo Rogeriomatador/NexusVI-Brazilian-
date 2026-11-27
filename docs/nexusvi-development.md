@@ -518,3 +518,33 @@ harness passed a synthetic-clock check on one trace; this is not timing
 evidence. Native CI will measure 18 alternating pairs after three warmup
 rounds. No inherited runtime changes or physical GPU performance claims.
 Run `node scripts/nexusvi_sparse_arena_v4.js`.
+
+## Independent AVL scaling and fragmentation experiment
+
+CI run 45988076416 passed V4 correctness. Actual prior timings: Linux
+V2 median 8766807 ns, V4 8822740 ns (paired ratio 0.990229, 4/18 wins);
+Windows V2 8869550 ns, V4 8759300 ns (paired ratio 1.012043, 15/18 wins).
+No consistent timing improvement across the two runners. Keep V2 as the
+reference rather than selecting V4 on operation counts alone.
+
+The new bounded experiment uses capacities 8192 and 16384, fresh seeds
+104729 and 130363, a mixed trace and a fragmented-prefix trace for each
+seed/capacity pair. The fragmented trace fills the arena with 32-byte
+blocks, releases alternating blocks simultaneously and then issues 800
+mixed requests; remaining initial blocks expire after 400 subsequent
+requests. The independent occupancy plan and full AVL checks verify every
+request; full reclamation is checked by the shared harness. Counts observed
+in a JS isolate with equivalent strict assertions:
+
+| Capacity | Requests per version | Accepted | V2 mutation visits | V4 mutation visits | Peak free nodes | Peak height |
+|---|---:|---:|---:|---:|---:|---:|
+| 8192 | 4512 | 3349 | 97456 | 92474 | 130 | 8 |
+| 16384 | 5024 | 4069 | 125368 | 119514 | 258 | 9 |
+
+Four construction checks and all eight comparative traces passed. The
+shared timing harness was tested with a synthetic clock on one trace;
+no real time is inferred. CI measures 18 alternating pairs per capacity
+with three warmup rounds and checks every result outside the timed region.
+Capacities are logical bytes, not real memory mappings. No inherited runtime
+changes, physical GPU measurement or game benchmark.
+Run `node scripts/nexusvi_sparse_scaling.js`.
