@@ -426,3 +426,32 @@ pool them. With only 18 samples, nearest-rank P95 is the maximum. These
 measure instrumented logical allocators on this synthetic workload only.
 CI saves its current timing report and verifies it independently before
 reporting paired diagnostics. No inherited runtime or game benchmark.
+
+## Sparse AVL lookup elimination
+
+Keep the original AVL unchanged. A subclass returns the selected node from
+search and passes already known interval coordinates into deletion. Left
+coalescing uses the existing end-address map; right coalescing reuses its
+lookup. Coordinates are copied before successor substitution. No changes
+to balancing or refresh logic. An independent aligned-address bitmap plan
+checks exact placements, and each replay validates free intervals and AVL
+metadata. Four crafted checks plus 12 prior traces passed in a JS isolate
+using equivalent strict assertions. Observed counts (9600 requests each):
+
+| Metric | Baseline | Candidate |
+|---|---:|---:|
+| accepted | 7611 | 7611 |
+| visits | 56568 | 56568 |
+| candidates | 9164 | 9164 |
+| mutations | 327088 | 245979 |
+| recalculations | 196688 | 196688 |
+| rotations | 15620 | 15620 |
+
+Both implementations fully reclaimed all 12 arenas. Mutation visits fell
+by 24.7973%; this is an operation count, not runtime speedup.
+Native CI also measures 18 alternating paired samples after three warmup
+rounds, each covering 9600 requests, validating placements outside the
+monotonic clock region. The timing harness was checked with a synthetic
+clock on one trace, not used as timing evidence. No physical GPU or runtime
+integration; real time results pending CI. Run
+`node scripts/nexusvi_sparse_arena_v2.js`.
