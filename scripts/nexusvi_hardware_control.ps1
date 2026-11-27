@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Collect process metrics only from the fixed, original synthetic child below.
+# Collect metrics during the fixed, original in-process synthetic CPU workload.
 [CmdletBinding()]
 param(
     [ValidateRange(5, 120)][int]$Seconds = 15,
@@ -44,6 +44,9 @@ function Get-SourceIdentity {
         tracked_changes = $null
         git_status = 'standalone_or_unavailable'
     }
+    if ((Split-Path -Leaf (Split-Path -Parent $ScriptPath)) -ne 'scripts') {
+        return $identity
+    }
     try {
         # Multiple Git installations can return multiple ApplicationInfo objects.
         $git = Get-Command git -CommandType Application -ErrorAction Stop |
@@ -76,88 +79,90 @@ function Get-SourceIdentity {
 $hardware = Get-Hardware
 $identity = Get-SourceIdentity -ScriptPath $PSCommandPath
 
-# The child command is fixed except for a validated integer duration.
-# It does not execute or attach to any user-supplied application.
-$worker = @'
-$ErrorActionPreference = 'Stop'
+# The fixed CPU workload runs in this PowerShell process. There is no
+# subprocess, encoded command, external executable or arbitrary process target.
+# CPU time and memory include the host and measurement overhead.
+$process = [Diagnostics.Process]::GetCurrentProcess()
+$rows = [Collections.Generic.List[object]]::new()
 $buffer = New-Object byte[] 65536
-$sha = [System.Security.Cryptography.SHA256]::Create()
-$timer = [Diagnostics.Stopwatch]::StartNew()
+$sha = $null
+$watch = [Diagnostics.Stopwatch]::new()
+$startedUtc = [DateTime]::UtcNow.ToString('o')
+$hashes = [long]0
+
+function Get-ControlSample {
+    param(
+        [Diagnostics.Process]$Process,
+        [Diagnostics.Stopwatch]$Watch,
+        [double]$BaselineCpuMs,
+        [int]$LogicalProcessors,
+        $Previous,
+        [long]$Hashes
+    )
+    $Process.Refresh()
+    $cpuMs = $Process.TotalProcessorTime.TotalMilliseconds - $BaselineCpuMs
+    $elapsed = $Watch.Elapsed.TotalMilliseconds
+    $corePercent = $null
+    $hostPercent = $null
+    if ($null -ne $Previous) {
+        $dt = $elapsed - $Previous.elapsed_ms
+        $dcpu = $cpuMs - $Previous.cpu_total_ms
+        if ($dt -gt 0 -and $dcpu -ge 0) {
+            $corePercent = 100.0 * $dcpu / $dt
+            $hostPercent = $corePercent / $LogicalProcessors
+        }
+    }
+    [pscustomobject][ordered]@{
+        elapsed_ms = $elapsed
+        cpu_total_ms = $cpuMs
+        cpu_one_core_equivalent_pct = $corePercent
+        cpu_host_logical_capacity_pct = $hostPercent
+        working_set_bytes = [int64]$Process.WorkingSet64
+        private_bytes = [int64]$Process.PrivateMemorySize64
+        completed_hashes = $Hashes
+    }
+}
+
 try {
-    while ($timer.Elapsed.TotalSeconds -lt __SECONDS__) {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    if ($null -eq $sha) { throw 'SHA-256 provider unavailable.' }
+    $process.Refresh()
+    $baseline = $process.TotalProcessorTime.TotalMilliseconds
+    $watch.Start()
+    $previous = Get-ControlSample -Process $process -Watch $watch -BaselineCpuMs $baseline -LogicalProcessors $hardware.logical_processors -Previous $null -Hashes 0
+    $rows.Add($previous)
+    $nextSample = [double]$SampleMs
+    while ($watch.Elapsed.TotalSeconds -lt $Seconds) {
         $digest = $sha.ComputeHash($buffer)
         $buffer[0] = $digest[0]
+        $hashes++
+        if ($watch.Elapsed.TotalMilliseconds -ge $nextSample) {
+            $row = Get-ControlSample -Process $process -Watch $watch -BaselineCpuMs $baseline -LogicalProcessors $hardware.logical_processors -Previous $previous -Hashes $hashes
+            $rows.Add($row)
+            $previous = $row
+            $nextSample = $row.elapsed_ms + $SampleMs
+        }
     }
-} finally {
-    $sha.Dispose()
-}
-'@
-$worker = $worker.Replace('__SECONDS__', [string]$Seconds)
-$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($worker))
-$hostExe = (Get-Process -Id $PID -ErrorAction Stop).Path
-$process = $null
-$rows = [Collections.Generic.List[object]]::new()
-$watch = [Diagnostics.Stopwatch]::StartNew()
-$startedUtc = [DateTime]::UtcNow.ToString('o')
-try {
-    $process = Start-Process -FilePath $hostExe -ArgumentList @(
-        '-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded
-    ) -NoNewWindow -PassThru -ErrorAction Stop
-    $previous = $null
-    while ($true) {
-        if ($watch.Elapsed.TotalSeconds -gt ($Seconds + 15)) {
-            throw 'Synthetic worker exceeded its time budget.'
-        }
-        $process.Refresh()
-        if ($process.HasExited) { break }
-        try {
-            $cpuMs = $process.TotalProcessorTime.TotalMilliseconds
-            $working = [int64]$process.WorkingSet64
-            $private = [int64]$process.PrivateMemorySize64
-        } catch {
-            $process.Refresh()
-            if ($process.HasExited) { break }
-            throw
-        }
-        $elapsed = $watch.Elapsed.TotalMilliseconds
-        $corePercent = $null
-        $hostPercent = $null
-        if ($null -ne $previous) {
-            $dt = $elapsed - $previous.elapsed_ms
-            $dcpu = $cpuMs - $previous.cpu_total_ms
-            if ($dt -gt 0 -and $dcpu -ge 0) {
-                $corePercent = 100.0 * $dcpu / $dt
-                $hostPercent = $corePercent / $hardware.logical_processors
-            }
-        }
-        $row = [pscustomobject][ordered]@{
-            elapsed_ms = $elapsed
-            cpu_total_ms = $cpuMs
-            cpu_one_core_equivalent_pct = $corePercent
-            cpu_host_logical_capacity_pct = $hostPercent
-            working_set_bytes = $working
-            private_bytes = $private
-        }
-        $rows.Add($row)
-        $previous = $row
-        Start-Sleep -Milliseconds $SampleMs
+    $last = Get-ControlSample -Process $process -Watch $watch -BaselineCpuMs $baseline -LogicalProcessors $hardware.logical_processors -Previous $previous -Hashes $hashes
+    $rows.Add($last)
+    $watch.Stop()
+    if ($rows.Count -lt 2 -or $last.cpu_total_ms -le 0 -or $hashes -le 0) {
+        throw 'Insufficient measured CPU work.'
     }
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) { throw 'Synthetic worker failed.' }
-    if ($rows.Count -lt 2) { throw 'Insufficient process samples.' }
-    $last = $rows[$rows.Count - 1]
-    if ($last.cpu_total_ms -le 0) { throw 'No measured CPU work.' }
     $report = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         scope = 'independent_synthetic_cpu_only'
         started_utc = $startedUtc
         source = $identity
         hardware = $hardware
         workload = [ordered]@{
-            id = 'sha256_chain_64k_v1'
+            id = 'sha256_chain_64k_in_process_v2'
+            measurement_mode = 'current_powershell_process_including_host_overhead'
             requested_seconds = $Seconds
             sample_interval_ms = $SampleMs
-            exit_code = $process.ExitCode
+            completed = $true
+            completed_hashes = $hashes
+            measured_elapsed_ms = $last.elapsed_ms
         }
         metrics = [ordered]@{
             sample_count = $rows.Count
@@ -174,12 +179,7 @@ try {
     }
     $report | ConvertTo-Json -Depth 8
 } finally {
-    if ($null -ne $process) {
-        $process.Refresh()
-        if (-not $process.HasExited) {
-            $process.Kill()
-            [void]$process.WaitForExit(5000)
-        }
-        $process.Dispose()
-    }
+    $watch.Stop()
+    if ($null -ne $sha) { $sha.Dispose() }
+    $process.Dispose()
 }

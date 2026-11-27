@@ -121,32 +121,25 @@ small reclamation demonstration. Build with
 ## Windows hardware control report
 
 The independent PowerShell script `scripts/nexusvi_hardware_control.ps1`
-launches only its own fixed SHA-256 chain CPU workload and records sampled
-process CPU time, working set and private bytes. It cannot select or attach
-to another executable. Hardware metadata uses best-effort CIM inventory,
-including GPU model and driver, not GPU measurements. The source identity
-contains the script SHA-256 and, when available, Git HEAD and tracked-change
-status; untracked changes are not checked. CPU percentages are interval
-estimates and can overshoot due to sampling or CPU timer granularity. Memory
-peaks are sampled lower bounds; observed CPU time can omit the final interval.
-FPS, VRAM, GPU load and temperature are explicitly null, not zero.
-No serial numbers, usernames, hostnames or automatic uploads are included.
-Review the JSON before sharing it; hardware models and driver details are
-included. CI validates the report on its Windows runner, not a physical GPU.
+runs its own fixed SHA-256 chain CPU workload in the current PowerShell process.
+It does not launch a subprocess or attach to another executable. Schema v2
+replaces the failed subprocess-based v1; timing and memory measurements from
+these modes are not comparable. CPU time is relative to the initial process
+CPU time. Working set and private bytes include the host and collector overhead.
+The report includes completed hash count, observed duration, sample count,
+source SHA-256 and (for a tracked checkout) Git revision. CIM metadata is
+best effort. Sampled memory peaks are lower bounds and CPU interval estimates
+may overshoot due to timer granularity. FPS, VRAM, GPU load and temperature
+remain null. No serial numbers, usernames, hostnames or automatic uploads
+are included. Review the report before sharing it.
 
-Run from a Windows PowerShell session with normal local script permissions:
+Run in a fresh Windows PowerShell session with normal local script permissions:
 
 ```powershell
 & ./scripts/nexusvi_hardware_control.ps1 -Seconds 15 -SampleMs 250 |
     Set-Content -Encoding utf8 "$env:TEMP/NexusVI-hardware-report.json"
 ```
 
-The report lives outside the repository. Its purpose is to test the independent
-measurement pipeline, not to evaluate a game or the inherited runtime.
-
-The collector can also run as a standalone downloaded PowerShell file, without
-Git or any game. In this mode the source SHA-256 identifies the file and the Git
-revision is null. A revision is reported only when the expected collector path
-is tracked in a local checkout. The CI also exercises a standalone copy using
-Windows PowerShell 5.1. Do not use a revision claim as a substitute for checking
-the actual collector hash or local modifications.
+A standalone download reports a null Git revision and its actual script hash.
+CI checks both a tracked checkout and a standalone Windows PowerShell 5.1 copy.
+The workload evaluates only the independent CPU measurement pipeline.

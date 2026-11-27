@@ -75,17 +75,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./nexusvi_arena.exe
           exit $LASTEXITCODE
-      - name: Validate Windows hardware report on synthetic child
+      - name: Validate Windows in-process hardware report
         if: runner.os == 'Windows'
         run: |
           $report = (& ./scripts/nexusvi_hardware_control.ps1 -Seconds 5 -SampleMs 250 | Out-String | ConvertFrom-Json)
-          if ($report.scope -ne 'independent_synthetic_cpu_only' -or $report.schema_version -ne 1) {
+          if ($report.scope -ne 'independent_synthetic_cpu_only' -or $report.schema_version -ne 2) {
             throw 'Unexpected report identity'
           }
           if ($report.metrics.sample_count -lt 2 -or $report.metrics.sample_count -ne $report.samples.Count) {
             throw 'Invalid sample count'
           }
-          if ($report.workload.exit_code -ne 0 -or $report.metrics.observed_cpu_total_ms -le 0) {
+          if (-not $report.workload.completed -or $report.workload.completed_hashes -le 0 -or $report.metrics.observed_cpu_total_ms -le 0) {
             throw 'Invalid CPU observation'
           }
           if ($null -ne $report.metrics.fps -or $null -ne $report.metrics.vram_bytes) {
@@ -98,6 +98,12 @@ jobs:
           if ($report.source.git_revision -ne $env:GITHUB_SHA -or $report.source.git_status -ne 'revision_observed') {
             throw "Source revision mismatch; status=$($report.source.git_status); observed=$($report.source.git_revision); expected=$env:GITHUB_SHA"
           }
+          if ($report.workload.measurement_mode -ne 'current_powershell_process_including_host_overhead' -or $report.workload.measured_elapsed_ms -lt 5000) {
+            throw 'Invalid measurement scope or duration'
+          }
+          if ($report.samples[0].completed_hashes -ne 0 -or $report.samples[-1].completed_hashes -ne $report.workload.completed_hashes) {
+            throw 'Invalid operation counters'
+          }
           $report | ConvertTo-Json -Depth 8 | Write-Output
       - name: Validate standalone collector in Windows PowerShell 5.1
         if: runner.os == 'Windows'
@@ -109,6 +115,9 @@ jobs:
             $file = Join-Path $dir 'nexusvi_hardware_control.ps1'
             Copy-Item -LiteralPath ./scripts/nexusvi_hardware_control.ps1 -Destination $file
             $report = (& $file -Seconds 5 -SampleMs 250 | Out-String | ConvertFrom-Json)
+            if ($report.schema_version -ne 2 -or -not $report.workload.completed -or $report.workload.completed_hashes -le 0 -or $report.workload.measured_elapsed_ms -lt 5000) {
+              throw 'Standalone workload did not complete'
+            }
             if ($report.source.git_revision -ne $null -or $report.source.git_status -ne 'standalone_or_unavailable') {
               throw 'Standalone file must not claim a Git revision'
             }
