@@ -237,3 +237,31 @@ First-fit accepted 5118 vs 5078 mixed-profile requests; best-fit accepted
 4859 vs 4783 large-profile requests. Both accepted all 6000 small requests.
 Neither universally dominates. No physical memory, GPU or inherited runtime
 performance is measured. CI repeats the experiment independently.
+
+## Bounded-candidate hybrid allocation
+
+A third policy, hybrid4, selects the smallest leftover among the first four
+eligible ranges (ties by address); this is a cap on suitable candidates,
+not a hard cap on total probes. Exhaustion still scans all ranges. The same
+nine traces and independent byte-occupancy oracle are used for all three
+policies. Two additional crafted cases exercise the fifth eligible range
+and skipping non-fitting ranges. Baseline outcomes were reproduced exactly
+for accepted counts and range probes. The following results were measured
+by executing the JavaScript core in a local JS isolate with equivalent strict
+assertions; the native Node CLI is scheduled for cross-platform CI.
+
+| Policy | Accepted | Failed | Mean fragmentation | Probes | Full reclamation |
+|---|---:|---:|---:|---:|---:|
+| first | 15901 | 2099 | 59.1989% | 285080 | 9/9 |
+| best | 15937 | 2063 | 55.1469% | 532223 | 9/9 |
+| hybrid4 | 15955 | 2045 | 54.8005% | 453160 | 9/9 |
+
+| Policy | Small | Mixed | Large |
+|---|---:|---:|---:|
+| first | 6000 | 5118 | 4783 |
+| best | 6000 | 5078 | 4859 |
+| hybrid4 | 6000 | 5093 | 4862 |
+
+The experiment comprises 54,000 allocation requests in total, 18,000 per
+policy. These are deterministic logical results, not runtime measurements.
+No universal policy recommendation or inherited runtime change is implied.

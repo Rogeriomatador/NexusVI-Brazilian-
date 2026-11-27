@@ -18,7 +18,7 @@ class Arena {
   constructor(cap,policy){this.cap=cap;this.policy=policy;this.free=[[0,cap]];this.live=new Map();this.probes=0;}
   allocate(id,len,align){
     assert(!this.live.has(id));
-    let choice=-1,offset=0,best=Infinity;
+    let choice=-1,offset=0,best=Infinity,eligible=0;
     for(let i=0;i<this.free.length;i++){
       this.probes++;
       const [s,e]=this.free[i],p=Math.ceil(s/align)*align;
@@ -27,6 +27,7 @@ class Arena {
       // Best-fit minimizes total leftover bytes (both alignment prefix and suffix).
       const waste=e-s-len;
       if(waste<best){choice=i;offset=p;best=waste;}
+      if(this.policy==='hybrid4'&&++eligible===4)break;
     }
     if(choice<0)return false;
     const [s,e]=this.free[choice],parts=[];
@@ -49,10 +50,12 @@ class Arena {
 }
 // Independent byte-occupancy oracle: reconstruct maximal free runs, evaluate fit.
 function oracle(bits,len,align,policy){
-  let offset=-1,best=Infinity;
+  const candidates=[];
   for(let s=0;s<bits.length;){if(bits[s]){s++;continue;}let e=s+1;while(e<bits.length&&!bits[e])e++;
-    const p=Math.ceil(s/align)*align;if(p+len<=e){if(policy==='first')return p;const waste=e-s-len;if(waste<best){best=waste;offset=p;}}s=e;}
-  return offset;
+    const p=Math.ceil(s/align)*align;
+    if(p+len<=e){candidates.push({offset:p,waste:e-s-len});if(policy==='first')return p;if(policy==='hybrid4'&&candidates.length===4)break;}s=e;}
+  candidates.sort((a,b)=>a.waste-b.waste||a.offset-b.offset);
+  return candidates.length?candidates[0].offset:-1;
 }
 function replay(requests,policy,cap=CAP){
   const a=new Arena(cap,policy),bits=new Uint8Array(cap),expirations=new Map();
@@ -73,15 +76,29 @@ function replay(requests,policy,cap=CAP){
   return {policy,requests:requests.length,accepted,failed,fragmented,alignmentOnly,insufficient,acceptedBytes,meanFragmentation:fragSum/requests.length,peakLiveBytes:peak,rangeProbes:a.probes,reclaimedBytes:cap};
 }
 function tests(){
-  for(const policy of ['first','best']){
+  for(const policy of ['first','best','hybrid4']){
     const a=new Arena(64,policy);assert(a.allocate(0,3,1));assert(a.allocate(1,8,16));assert.deepEqual(a.live.get(1),[16,24]);assert(a.release(0));assert(a.release(1));assert.deepEqual(a.free,[[0,64]]);assert(!a.release(1));
     assert(a.allocate(2,64,1));const before=JSON.stringify(a.free);assert(!a.allocate(3,1,1));assert.equal(JSON.stringify(a.free),before);assert(a.release(2));a.check();
   }
   // Fit choice must differ on this known free-range layout.
-  for(const policy of ['first','best']){const a=new Arena(64,policy);for(const [i,n] of [20,4,12,28].entries())assert(a.allocate(i,n,1));a.release(0);a.release(2);assert(a.allocate(4,10,1));assert.equal(a.live.get(4)[0],policy==='first'?0:24);a.check();}
+  for(const policy of ['first','best','hybrid4']){const a=new Arena(64,policy);for(const [i,n] of [20,4,12,28].entries())assert(a.allocate(i,n,1));a.release(0);a.release(2);assert(a.allocate(4,10,1));assert.equal(a.live.get(4)[0],policy==='first'?0:24);a.check();}
+  // Five fitting gaps: hybrid4 must ignore the fifth, even if it is exact.
+  for(const policy of ['first','best','hybrid4']){
+    const a=new Arena(100,policy);
+    for(const [i,n] of [16,1,14,1,12,1,10,1,8,36].entries())assert(a.allocate(i,n,1));
+    for(const id of [0,2,4,6,8])assert(a.release(id));
+    assert(a.allocate(10,8,1));assert.equal(a.live.get(10)[0],{first:0,best:56,hybrid4:45}[policy]);a.check();
+  }
+  // The first four examined ranges are not necessarily eligible.
+  for(const policy of ['first','best','hybrid4']){
+    const a=new Arena(64,policy);
+    for(const [i,n] of [1,1,1,1,1,1,1,1,16,40].entries())assert(a.allocate(i,n,1));
+    for(const id of [0,2,4,6,8])assert(a.release(id));
+    assert(a.allocate(10,8,1));assert.equal(a.live.get(10)[0],8);a.check();
+  }
   assert.deepEqual(trace(42,'mixed'),trace(42,'mixed'));
   assert.notDeepEqual(trace(42,'mixed'),trace(43,'mixed'));
 }
-function main(){tests();const results=[];for(const profile of ['small','mixed','large'])for(const seed of [42,1337,20261127]){const requests=trace(seed,profile);results.push({profile,seed,results:['first','best'].map(p=>replay(requests,p))});}console.log(JSON.stringify({scope:'independent_logical_arena_only',capacityBytes:CAP,stepsPerTrace:STEPS,results},null,2));}
+function main(){tests();const results=[];for(const profile of ['small','mixed','large'])for(const seed of [42,1337,20261127]){const requests=trace(seed,profile);results.push({profile,seed,results:['first','best','hybrid4'].map(p=>replay(requests,p))});}console.log(JSON.stringify({scope:'independent_logical_arena_only',capacityBytes:CAP,stepsPerTrace:STEPS,results},null,2));}
 if(require.main===module)main();
 module.exports={trace,replay,tests};
