@@ -57,4 +57,4 @@ if(require.main===module){
     }
   }catch(e){console.error('Rejected: '+e.message);process.exitCode=1;}
 }
-module.exports={analyze,tests};
+module.exports={analyze,tests,fixture};

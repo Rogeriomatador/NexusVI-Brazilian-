@@ -12,6 +12,7 @@ on:
       - 'scripts/nexusvi_graphics_verify.js'
       - 'scripts/nexusvi_strict_json.js'
       - 'scripts/nexusvi_evidence_manifest.js'
+      - 'scripts/nexusvi_revision_compare.js'
       - 'scripts/nexusvi_fragmentation.js'
       - 'scripts/nexusvi_indexed_arena.js'
       - 'scripts/nexusvi_sparse_arena.js'
@@ -202,6 +203,10 @@ jobs:
           node scripts/nexusvi_evidence_manifest.js create . $revision
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/nexusvi_evidence_manifest.js verify . $revision
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_revision_compare.js --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_revision_compare.js --check-bundle . $revision
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         with:

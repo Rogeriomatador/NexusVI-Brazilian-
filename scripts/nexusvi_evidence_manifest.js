@@ -40,7 +40,7 @@ function tests(){
   let rejected=false;try{parseStrict('{"revision":"a","revision":"b"}');}catch{rejected=true;}assert(rejected);
   return 14;
 }
-function native(){
+function nativeAccess(){
   const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
   function read(file,limit){
     // Reject symlinks and nonregular files before opening; recheck descriptor.
@@ -54,6 +54,24 @@ function native(){
   }
   const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
   const describe=(dir,name)=>{const b=read(path.join(dir,name),MAX);return {bytes:b.length,sha256:digest(b)};};
+  return {fs,path,read,digest,describe};
+}
+function loadBundle(dir,revision){
+  const {path,read,digest}=nativeAccess();
+  const decode=b=>new TextDecoder('utf-8',{fatal:true}).decode(b);
+  const m=parseStrict(decode(read(path.join(dir,'evidence-manifest.json'),65536)));
+  validate(m,revision);
+  const snapshots=new Map();
+  verify(m,revision,name=>{
+    const b=read(path.join(dir,name),MAX);
+    snapshots.set(name,b);
+    return {bytes:b.length,sha256:digest(b)};
+  });
+  // Parse the identical bytes that were hashed, not a second filesystem read.
+  return {revision,manifest:m,timing:parseStrict(decode(snapshots.get('arena-timing.json')))};
+}
+function native(){
+  const {fs,path,read,digest,describe}=nativeAccess();
   function selfTest(){
     const count=tests();
     assert.equal(digest(Buffer.from('abc')),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
@@ -82,4 +100,4 @@ function native(){
   }else throw Error('unknown mode');
 }
 if(require.main===module){try{native();}catch(e){console.error('Rejected: '+e.message);process.exitCode=1;}}
-module.exports={build,verify,validate,tests};
+module.exports={build,verify,validate,tests,loadBundle};

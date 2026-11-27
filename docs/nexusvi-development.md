@@ -596,3 +596,26 @@ and deterministic test digests. Actual SHA-256 known-vector and filesystem
 checks (including same-length alteration and missing file) are in native CI;
 no native result is claimed before execution. Previous strict JSON CI run
 45988704060 completed successfully on both platforms.
+
+## Independent revision comparison
+
+CI 45988989158 passed 18 manifest checks on each OS, verified both files,
+and uploaded Windows artifact 15192173775 (2127 bytes) and Linux artifact
+15193590617 (2199 bytes). Artifact metadata and CI logs checked; archive
+bytes were not independently downloaded. The new comparison CLI reads both
+fixed report files once per bundle, checks their SHA-256 and byte counts
+against the manifest, then parses the same verified timing bytes. Both
+expected revisions must differ; the fixed timing schema, declared platform,
+architecture and Node version must match. It reports candidate/base median
+and P95 time ratios and change in the within-run paired speedup relative to
+linear. Different runs are not paired by round number. A shared slowdown
+can affect absolute ratios while leaving relative ratios unchanged; the
+linear baseline may itself change. Matching metadata does not establish
+hardware or workload source equivalence. No automatic regression verdict,
+confidence interval, authentication, or claim of production speed.
+
+Run `node scripts/nexusvi_revision_compare.js BASE_DIR BASE_REV CANDIDATE_DIR CANDIDATE_REV`.
+13 comparison core cases passed in a JS isolate with equivalent strict
+assertions; 14 manifest and 11 timing core checks still passed.
+Three additional filesystem tests and actual current CI bundle verification
+are scheduled in native CI. No two real revision archives compared yet.
