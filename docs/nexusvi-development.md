@@ -302,3 +302,32 @@ held out relative to the prior Hybrid4 experiment but reuse its workload
 families. This is not a comprehensive workload distribution or a timing
 benchmark; selecting a policy from these results would require additional
 independent validation. CI reruns original and held-out experiments.
+
+## Indexed logical first-fit experiment
+
+A dense max-length segment tree indexed by free interval start prunes
+subtrees that cannot hold the requested length. Alignment is checked at
+leaves; left-first traversal preserves exact first-fit semantics. Maps by
+start/end support two-sided merging. The bitmap oracle checks all placements,
+free intervals, root maximum, accounting and final recovery. Four crafted
+checks cover alignment, merge, non-power-of-two capacity and fragmentation.
+The 12 previous held-out traces are reused (9600 requests). Results observed
+in a JS isolate with equivalent strict assertions, not native Node timing:
+
+| Metric | Value |
+|---|---:|
+| accepted | 7611 |
+| failed | 1989 |
+| linearProbes | 142724 |
+| indexVisits | 175479 |
+| indexLeaves | 9164 |
+| updateWrites | 547114 |
+
+All 12 traces fully reclaimed their logical capacity. Accepted counts and
+linear probe counts match the previous First-fit baseline. Tree visits,
+leaf checks and update writes are different operations; fewer leaf checks
+alone do not imply speedup. The dense index alone takes 32768 bytes for a
+4096-byte arena and 65536 bytes for an 8192-byte arena, excluding maps.
+This is an intentionally bounded correctness experiment, not a production
+allocator or a recommendation to integrate into the inherited runtime.
+Run `node scripts/nexusvi_indexed_arena.js`; native CI repeats the checks.

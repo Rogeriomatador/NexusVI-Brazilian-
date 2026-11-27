@@ -11,6 +11,7 @@ on:
       - 'scripts/nexusvi_range_arena.rs'
       - 'scripts/nexusvi_graphics_verify.js'
       - 'scripts/nexusvi_fragmentation.js'
+      - 'scripts/nexusvi_indexed_arena.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
       - '.github/workflows/nexusvi-tools.yml'
@@ -148,4 +149,8 @@ jobs:
           node scripts/nexusvi_fragmentation.js
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/nexusvi_fragmentation.js --holdout
+          exit $LASTEXITCODE
+      - name: Verify indexed logical first-fit arena
+        run: |
+          node scripts/nexusvi_indexed_arena.js
           exit $LASTEXITCODE
