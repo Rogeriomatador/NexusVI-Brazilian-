@@ -179,3 +179,25 @@ texture stress, real GPU load/temperature/VRAM telemetry or presentation FPS.
 The workload is unrelated to the inherited runtime. Hardware execution and
 shader compilation have not been verified at introduction; the JS source
 passes a syntax check only. Keep tests short and supervised.
+
+## Independent graphics report verification
+
+The dependency-free Node.js tool `scripts/nexusvi_graphics_verify.js` checks
+schema v2 report identity, exact scenario definitions/order, resolution,
+measurement duration, raw frame and GPU arrays, independently recomputed
+summary statistics, cadence, query counts, coverage and timer status.
+Input is bounded to 4 MiB and 10,000 samples per array. It rejects invalid
+or inconsistent reports with exit code 1; successful verification returns
+structured JSON. This is not attestation, signature verification or proof
+that a physical GPU executed the workload. Duplicate JSON member detection
+is not implemented. No report is automatically uploaded.
+
+```sh
+node scripts/nexusvi_graphics_verify.js --self-test
+node scripts/nexusvi_graphics_verify.js report.json
+```
+
+26 deterministic synthetic fixture cases cover accepted complete, unsupported,
+disjoint and partial states and invalid summaries, metadata and samples.
+CI exercises the CLI on Windows and Linux. Fixtures contain invented timings
+for testing arithmetic only, not benchmark evidence.

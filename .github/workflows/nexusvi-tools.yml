@@ -9,6 +9,8 @@ on:
       - 'scripts/nexusvi_synthetic.rs'
       - 'scripts/nexusvi_synthetic_report.rs'
       - 'scripts/nexusvi_range_arena.rs'
+      - 'scripts/nexusvi_graphics_verify.js'
+      - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
       - '.github/workflows/nexusvi-tools.yml'
   workflow_dispatch:
@@ -127,3 +129,16 @@ jobs:
           } finally {
             Remove-Item -LiteralPath $dir -Recurse -Force
           }
+      - name: Verify independent graphics report fixtures
+        run: |
+          node --version
+          node scripts/nexusvi_graphics_verify.js --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_graphics_verify.js --fixture | Set-Content -Encoding utf8 synthetic-graphics.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_graphics_verify.js synthetic-graphics.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-Content -Encoding utf8 synthetic-graphics-invalid.json '{}'
+          node scripts/nexusvi_graphics_verify.js synthetic-graphics-invalid.json
+          if ($LASTEXITCODE -ne 1) { throw 'Invalid report not rejected' }
+          exit 0
