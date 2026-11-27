@@ -66,3 +66,27 @@ Exit 2 flags a descriptive regression (median or paired median > 1.05, or
 p95 > 1.10); exit 1 means invalid input; exit 0 means within those thresholds.
 Neither the screen nor identical context strings establish statistical
 significance or independently verify the environment. Do not infer GPU coverage.
+
+## Synthetic CPU benchmark control
+
+The independent `scripts/nexusvi_synthetic.rs` compares a simple sixteen-pass
+histogram reference with a single-pass histogram using deterministic generated
+integers. This demonstrates the measurement pipeline, not the performance of
+VIctory or any compatibility runtime. Compile and run:
+
+```sh
+rustc +stable --edition=2024 -O scripts/nexusvi_synthetic.rs -o nexusvi_synthetic
+./nexusvi_synthetic 65536 20 42
+```
+
+Arguments are item count, pair count and unsigned seed. The generator uses
+fixed wrapping arithmetic; the two algorithms see identical inputs per pair,
+with alternating order and an unrecorded warmup. Data generation and correctness
+checks are outside the timed regions. Every histogram is compared exactly.
+The work budget bounds input memory and execution effort. The tool emits raw
+nanosecond pairs only after all checks pass. A zero duration is an error.
+CI runs the six unit tests and an optimized 20-pair smoke run; the smoke tests
+report structure, not speed thresholds. Compiler optimizations, host scheduling,
+CPU cache effects and timer resolution can affect the timing. This standalone
+report compares two algorithms, not two Git revisions; it is intentionally not
+accepted directly as input to the revision comparator.

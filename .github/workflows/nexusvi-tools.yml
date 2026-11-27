@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/nexusvi_sample_stats.rs'
       - 'scripts/nexusvi_compare.rs'
+      - 'scripts/nexusvi_synthetic.rs'
       - '.github/workflows/nexusvi-tools.yml'
   workflow_dispatch:
 
@@ -35,4 +36,18 @@ jobs:
           rustc +stable --edition=2024 --test scripts/nexusvi_compare.rs -o nexusvi_compare_tests.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./nexusvi_compare_tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustc +stable --edition=2024 --test scripts/nexusvi_synthetic.rs -o nexusvi_synthetic_tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./nexusvi_synthetic_tests.exe
           exit $LASTEXITCODE
+      - name: Run synthetic control (not a performance gate)
+        run: |
+          rustc +stable --edition=2024 -O scripts/nexusvi_synthetic.rs -o nexusvi_synthetic.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rows = @(./nexusvi_synthetic.exe 65536 20 42)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($rows.Count -ne 22 -or $rows[1] -ne 'pair_id,reference_ns,single_pass_ns') {
+            throw 'Unexpected synthetic report'
+          }
+          $rows | Write-Output
