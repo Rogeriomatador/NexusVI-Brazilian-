@@ -201,3 +201,39 @@ node scripts/nexusvi_graphics_verify.js report.json
 disjoint and partial states and invalid summaries, metadata and samples.
 CI exercises the CLI on Windows and Linux. Fixtures contain invented timings
 for testing arithmetic only, not benchmark evidence.
+
+## Independent logical fragmentation experiment
+
+Run `node scripts/nexusvi_fragmentation.js` with Node.js 22 or compatible.
+An 8192-byte logical arena replays nine deterministic traces: three size/lifetime
+profiles, three seeds and 2000 requests per trace. Both policies receive the
+same request IDs, alignment, size and expiration times, regardless of earlier
+allocation failures. First-fit chooses the first suitable interval; best-fit
+minimizes total unused bytes within a suitable interval, breaking ties by
+address. A separate byte-occupancy oracle verifies every placement, partition,
+alignment, accounting and complete final reclamation. Failure categories
+are insufficient total bytes, insufficient contiguous bytes, or alignment.
+Mean external fragmentation is the average per-request value of
+1 - largest_free / total_free (zero if no bytes are free). Range probes count
+search iterations, not runtime or CPU cycles. Different accepted lifetimes
+can change occupancy, so fragmentation alone is not a superiority criterion.
+
+Observed local execution, Node.js v22.16.0, 2026-11-27:
+
+| Metric | First-fit | Best-fit |
+|---|---:|---:|
+| Requests | 18000 | 18000 |
+| Accepted | 15901 | 15937 |
+| Failed | 2099 | 2063 |
+| Contiguous-space failures | 1996 | 1839 |
+| Alignment failures | 75 | 87 |
+| Insufficient-total failures | 28 | 137 |
+| Accepted bytes (cumulative) | 2134564 | 2169688 |
+| Mean external fragmentation | 59.1989% | 55.1469% |
+| Range probes | 285080 | 532223 |
+| Full reclamation | 9/9 | 9/9 |
+
+First-fit accepted 5118 vs 5078 mixed-profile requests; best-fit accepted
+4859 vs 4783 large-profile requests. Both accepted all 6000 small requests.
+Neither universally dominates. No physical memory, GPU or inherited runtime
+performance is measured. CI repeats the experiment independently.
