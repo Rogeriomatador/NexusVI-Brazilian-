@@ -773,3 +773,41 @@ universal benefit or real memory/latency gain is claimed. The same workload
 families are reused; additional seeds are not independent workload classes.
 Cyclic traces are seed-independent; retained solely for baseline comparison.
 Native CI pending. Run `node scripts/nexusvi_cache_adaptive.js`.
+
+## Independent byte-budget logical cache
+
+Adaptive CI 45990934472 passed on both platforms. Recomputed exact totals
+from native reports (168000 accesses each): FIFO 70023, LRU 70821,
+SLRU 74097, adaptive 74354. Adaptive gains 257 hits vs SLRU (0.347%
+relative), not a demonstrated improvement in runtime or physical memory.
+
+New weighted cache stores immutable-sized objects within a logical byte
+budget. FIFO and LRU are compared with largest4: evict the largest among
+the four oldest residents (ties oldest), repeat until enough room. Objects
+larger than the budget bypass without eviction. Resident size changes are
+rejected. Independent timestamp/sort oracle checks every hit, eviction,
+ordering and byte accounting. Six crafted cases and 24576
+exhaustive histories passed; 16 traces of 4000 accesses at 4096/16384
+logical bytes, two seeds, four profiles were replayed by all policies
+(192000 accesses). Small-hot is a variant of hot-scan, not an independent
+access pattern. Observed counts in JS isolate with equivalent assertions:
+
+| Profile | Policy | Requests | Hits | Requested bytes | Hit bytes | Evictions | Bypasses | Victim inspections |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| uniform | fifo | 16000 | 1471 | 8607595 | 483712 | 14071 | 331 | 14071 |
+| uniform | lru | 16000 | 1481 | 8607595 | 486208 | 14065 | 331 | 14065 |
+| uniform | largest4 | 16000 | 1692 | 8607595 | 488896 | 13843 | 331 | 55372 |
+| hot_scan | fifo | 16000 | 6319 | 12141449 | 2903424 | 8719 | 841 | 8719 |
+| hot_scan | lru | 16000 | 6319 | 12141449 | 2903424 | 8713 | 841 | 8713 |
+| hot_scan | largest4 | 16000 | 6319 | 12141449 | 2903424 | 8703 | 841 | 34812 |
+| small_hot | fifo | 16000 | 6319 | 8969641 | 202208 | 8658 | 841 | 8658 |
+| small_hot | lru | 16000 | 6319 | 8969641 | 202208 | 8658 | 841 | 8658 |
+| small_hot | largest4 | 16000 | 6319 | 8969641 | 202208 | 8648 | 841 | 34592 |
+| phase_shift | fifo | 16000 | 9420 | 10282010 | 3222464 | 5992 | 474 | 5992 |
+| phase_shift | lru | 16000 | 10686 | 10282010 | 3646208 | 4722 | 474 | 4722 |
+| phase_shift | largest4 | 16000 | 10860 | 10282010 | 3630848 | 4538 | 474 | 18152 |
+
+Hit bytes count logical payload volume served by hits, including repeated
+reads. Metadata cost is excluded. Victim inspections are operation counts,
+not wall time. No physical cache, GPU or runtime integration. Native CI
+pending. Run `node scripts/nexusvi_cache_weighted.js`.
