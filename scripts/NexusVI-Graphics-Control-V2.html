@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusVI Graphics Control V2</title>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<style>
+*{box-sizing:border-box}body{max-width:1100px;margin:24px auto;padding:0 18px;background:#101622;color:#e4ebf7;font:16px system-ui}h1{font-size:28px;margin-bottom:4px}p{line-height:1.5;color:#b4c2d8}canvas{width:100%;height:auto;display:block;background:#080b12;border:1px solid #34465f;border-radius:10px}button,select{font:inherit;background:#223449;color:white;border:1px solid #526782;border-radius:7px;padding:10px;margin:5px 4px}button:disabled{opacity:.45}#start{background:#166534}#stop{background:#991b1b}#status{padding:12px;border:1px solid #34465f;border-radius:8px;white-space:pre-wrap}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:8px;border-bottom:1px solid #34465f;text-align:right}td:first-child,th:first-child{text-align:left}.scroll{overflow:auto}small{color:#a8b6ca}
+</style>
+<h1>NexusVI — Graphics Control V2</h1>
+<p>Benchmark independente. Três cenários procedurais; sem arquivos de jogos ou conexão de rede. Não mede o VIctory.</p>
+<label>Resolução interna <select id="res"><option value="1280,720">720p</option><option value="1920,1080" selected>1080p</option><option value="2560,1440">1440p</option><option value="3840,2160">4K</option></select></label>
+<button id="start">Iniciar</button><button id="stop" disabled>Parar</button><button id="save" disabled>Salvar JSON</button>
+<div id="status" role="status">Pronto. Mantenha a aba visível durante a execução.</div>
+<canvas id="screen" width="960" height="540"></canvas>
+<div class="scroll"><table><thead><tr><th>Cenário</th><th>Cadência (Hz)</th><th>P95 intervalo (ms)</th><th>GPU mediana (ms)</th><th>GPU amostras</th></tr></thead><tbody id="results"></tbody></table></div>
+<p><small>2 s de aquecimento + 8 s medidos por cenário. O teste pode aquecer a GPU; interrompa se houver artefatos, instabilidade ou temperatura preocupante. A cadência rAF é normalmente limitada pela atualização da tela; não equivale a FPS apresentado. Tempos GPU medem comandos WebGL selecionados. VRAM, temperatura, utilização e sombras não são medidas nesta versão.</small></p>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const scenarios=[
+ {id:"fragment64",name:"Shader procedural",kind:"fragment",instances:0,passes:1,iterations:64},
+ {id:"geometry4096",name:"Geometria 3D",kind:"geometry",instances:4096,passes:1,iterations:0},
+ {id:"geometry8192_blend",name:"Geometria + transparência",kind:"geometry",instances:8192,passes:2,iterations:0}
+];
+const WARM=2000,MEASURE=8000,MAX_QUERIES=24,MAX_SAMPLES=10000;
+const vertexFull="#version 300 es\nvoid main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0.,1.);}";
+const fragmentFull="#version 300 es\nprecision highp float;uniform vec2 size;uniform float t;out vec4 color;void main(){vec2 p=(gl_FragCoord.xy*2.-size)/size.y;vec2 q=p;float a=0.;for(int i=0;i<64;i++){q=vec2(sin(q.y*2.1+t*.17+float(i)*.07),cos(q.x*2.3-t*.13));a+=sin(dot(q,p)*3.+float(i)*.19); }color=vec4(.5+.5*cos(vec3(0.,2.,4.)+a*.12+p.xyx),1.);}";
+const vertexGeo="#version 300 es\nprecision highp float;layout(location=0) in vec3 pos;layout(location=1) in vec3 normal;uniform float t;uniform float aspect;uniform int layer;out vec3 n;out vec3 v;void main(){int id=gl_InstanceID;float x=float(id%32)-15.5;float y=float((id/32)%16)-7.5;float z=float(id/512);float a=t*.55+float(id)*.017;mat2 r=mat2(cos(a),sin(a),-sin(a),cos(a));vec3 p=pos*.43;p.xz=r*p.xz;vec3 nn=normal;nn.xz=r*nn.xz;n=nn;v=vec3(x*.72,y*.72,-18.-z*1.15)+p+vec3(.16*sin(a),.18*cos(a),0.);if(layer==1)v.xy+=vec2(.20,.13);float d=-v.z;gl_Position=vec4(v.x*1.9/aspect,v.y*1.9,((d-1.)/99.)*2.*d-d,d);}";
+const fragmentGeo="#version 300 es\nprecision highp float;in vec3 n;in vec3 v;uniform float t;uniform int layer;out vec4 color;void main(){vec3 light=normalize(vec3(sin(t),.8,cos(t)));float diffuse=max(dot(normalize(n),light),0.);vec3 base=.35+.35*cos(v*.45+vec3(0.,2.,4.));color=vec4(base*(.35+.65*diffuse),layer==1?.32:1.);}";
+function stats(a){if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y),n=s.length;const pct=p=>s[Math.ceil(n*p)-1];return {count:n,mean_ms:a.reduce((x,y)=>x+y,0)/n,median_ms:n%2?s[n>>1]:(s[n/2-1]+s[n/2])/2,p95_ms:pct(.95),p99_ms:pct(.99),max_ms:s[n-1]};}
+function cube(){const out=[];for(let axis=0;axis<3;axis++)for(const sign of [-1,1]){let u=(axis+1)%3,v=(axis+2)%3;const corners=[[-1,-1],[1,-1],[1,1],[-1,1]];for(const i of [0,1,2,0,2,3]){let p=[0,0,0],n=[0,0,0];p[axis]=sign*.5;p[u]=corners[i][0]*.5;p[v]=corners[i][1]*.5;n[axis]=sign;out.push(...p,...n);}}return new Float32Array(out);}
+function shader(g,type,src){const s=g.createShader(type);g.shaderSource(s,src);g.compileShader(s);if(!g.getShaderParameter(s,g.COMPILE_STATUS)){const msg=g.getShaderInfoLog(s);g.deleteShader(s);throw Error(msg);}return s;}
+function program(g,v,f){const vs=shader(g,g.VERTEX_SHADER,v);let fs,p;try{fs=shader(g,g.FRAGMENT_SHADER,f);p=g.createProgram();g.attachShader(p,vs);g.attachShader(p,fs);g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw Error(g.getProgramInfoLog(p));return p;}catch(e){if(p)g.deleteProgram(p);throw e;}finally{g.deleteShader(vs);if(fs)g.deleteShader(fs);}}
+function setup(g){const full=program(g,vertexFull,fragmentFull),geo=program(g,vertexGeo,fragmentGeo);const vao=g.createVertexArray(),buf=g.createBuffer();g.bindVertexArray(vao);g.bindBuffer(g.ARRAY_BUFFER,buf);g.bufferData(g.ARRAY_BUFFER,cube(),g.STATIC_DRAW);for(let i=0;i<2;i++){g.enableVertexAttribArray(i);g.vertexAttribPointer(i,3,g.FLOAT,false,24,i*12);}g.bindVertexArray(null);const empty=g.createVertexArray();return {full,geo,vao,buf,empty,fu:{size:g.getUniformLocation(full,"size"),t:g.getUniformLocation(full,"t")},gu:{t:g.getUniformLocation(geo,"t"),aspect:g.getUniformLocation(geo,"aspect"),layer:g.getUniformLocation(geo,"layer")}};}
+function draw(g,r,s,t,w,h){g.viewport(0,0,w,h);g.disable(g.BLEND);g.depthMask(true);g.clearColor(.025,.035,.065,1);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);if(s.kind==="fragment"){g.disable(g.DEPTH_TEST);g.useProgram(r.full);g.bindVertexArray(r.empty);g.uniform2f(r.fu.size,w,h);g.uniform1f(r.fu.t,t);g.drawArrays(g.TRIANGLES,0,3);}else{g.enable(g.DEPTH_TEST);g.disable(g.CULL_FACE);g.useProgram(r.geo);g.bindVertexArray(r.vao);g.uniform1f(r.gu.t,t);g.uniform1f(r.gu.aspect,w/h);g.uniform1i(r.gu.layer,0);g.drawArraysInstanced(g.TRIANGLES,0,36,s.instances);if(s.passes===2){g.enable(g.BLEND);g.blendFunc(g.SRC_ALPHA,g.ONE_MINUS_SRC_ALPHA);g.depthMask(false);g.uniform1i(r.gu.layer,1);g.drawArraysInstanced(g.TRIANGLES,0,36,s.instances);g.depthMask(true);g.disable(g.BLEND);}}}
+let gl=null,resources=null,active=false,cancelled=false,report=null;
+const raf=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function guard(){if(cancelled||document.hidden||gl.isContextLost())throw Error("Teste interrompido, aba oculta ou contexto perdido.");}
+function cleanup(){if(!gl||!resources)return;const r=resources;gl.deleteProgram(r.full);gl.deleteProgram(r.geo);gl.deleteVertexArray(r.vao);gl.deleteVertexArray(r.empty);gl.deleteBuffer(r.buf);resources=null;}
+async function phase(s,w,h,ext){
+ const frames=[],gpu=[],pending=[];let skipped=0,disjoint=false,drainTimeout=false,issued=0;
+ function discard(){while(pending.length)gl.deleteQuery(pending.shift());}
+ function poll(){if(!ext)return;if(gl.getParameter(ext.GPU_DISJOINT_EXT)){disjoint=true;gpu.length=0;discard();return;}while(pending.length&&gl.getQueryParameter(pending[0],gl.QUERY_RESULT_AVAILABLE)){const q=pending.shift();const ns=gl.getQueryParameter(q,gl.QUERY_RESULT);gl.deleteQuery(q);if(Number.isFinite(ns)&&ns>0)gpu.push(ns/1e6);}}
+ try{
+  let t=await raf(),start=t;while(t-start<WARM){guard();draw(gl,resources,s,(t-start)/1000,w,h);t=await raf();}
+  guard();if(gl.getError()!==gl.NO_ERROR)throw Error("Erro WebGL durante aquecimento.");
+  start=t;let prev=t;while(t-start<MEASURE){
+   guard();poll();let q=null;
+   if(ext&&!disjoint&&pending.length<MAX_QUERIES){q=gl.createQuery();if(q){gl.beginQuery(ext.TIME_ELAPSED_EXT,q);issued++;}else skipped++;}else if(ext&&!disjoint)skipped++;
+   try{draw(gl,resources,s,(t-start)/1000,w,h);}finally{if(q){gl.endQuery(ext.TIME_ELAPSED_EXT);pending.push(q);}}
+   t=await raf();guard();const dt=t-prev;prev=t;if(!Number.isFinite(dt)||dt<=0||frames.length>=MAX_SAMPLES)throw Error("Intervalo inválido ou limite de amostras.");
+   frames.push(dt);
+   $("status").textContent=s.name+" — "+Math.min(100,Math.floor((t-start)/MEASURE*100))+"%";
+  }
+  if(gl.getError()!==gl.NO_ERROR)throw Error("Erro WebGL durante medição.");
+  const end=performance.now()+3000;while(pending.length&&performance.now()<end){guard();poll();if(pending.length)await sleep(16);}
+  if(pending.length)drainTimeout=true;poll();
+  const f=stats(frames),g=disjoint?null:stats(gpu);
+  return {scenario:s,measured_interval_ms:t-start,frame_intervals_ms:frames,frame_statistics:f,raf_hz:1000/f.mean_ms,gpu_ms:disjoint?[]:gpu,gpu_statistics:g,gpu_queries_issued:issued,gpu_queries_skipped:skipped,gpu_status:!ext?"unsupported":disjoint?"disjoint":drainTimeout?"partial_timeout":gpu.length===issued&&skipped===0?"complete":"partial",gpu_coverage:g?g.count/frames.length:0};
+ }finally{discard();}
+}
+function renderRow(r){const tr=document.createElement("tr");for(const v of [r.scenario.name,r.raf_hz.toFixed(2),r.frame_statistics.p95_ms.toFixed(3),r.gpu_statistics?r.gpu_statistics.median_ms.toFixed(3):"—",r.gpu_status+" ("+r.gpu_ms.length+"/"+r.frame_intervals_ms.length+")"]){const td=document.createElement("td");td.textContent=v;tr.append(td);}$("results").append(tr);}
+$("start").onclick=async()=>{if(active)return;active=true;cancelled=false;report=null;$("start").disabled=true;$("stop").disabled=false;$("save").disabled=true;$("res").disabled=true;$("results").replaceChildren();try{
+ const [w,h]=$("res").value.split(",").map(Number),canvas=$("screen");canvas.width=w;canvas.height=h;gl=canvas.getContext("webgl2",{antialias:false,depth:true,alpha:false,powerPreference:"high-performance",failIfMajorPerformanceCaveat:true});if(!gl)throw Error("WebGL 2 acelerado indisponível.");
+ if(gl.drawingBufferWidth!==w||gl.drawingBufferHeight!==h)throw Error("Resolução efetiva diferente da solicitada.");
+ resources=setup(gl);guard();const dbg=gl.getExtension("WEBGL_debug_renderer_info"),ext=gl.getExtension("EXT_disjoint_timer_query_webgl2");
+ const renderer={reported_vendor:gl.getParameter(gl.VENDOR),reported_renderer:gl.getParameter(gl.RENDERER),unmasked_renderer:dbg?gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL):null};
+ const started=new Date().toISOString(),results=[];
+ for(const s of scenarios){$("status").textContent=s.name+" — aquecimento";const r=await phase(s,w,h,ext);results.push(r);renderRow(r);}
+ guard();report={schema_version:2,scope:"independent_webgl2_synthetic_only",workload:"fragment_geometry_blend_v2",started_utc:started,width:w,height:h,warmup_ms:WARM,requested_measure_ms:MEASURE,renderer,renderer_is_unverified:true,metrics_unavailable:["vram_bytes","gpu_temperature_c","gpu_utilization_pct","display_present_fps"],results};$("status").textContent="Concluído. Salve o JSON para análise.";
+ }catch(e){report=null;$("status").textContent="Sem relatório válido: "+e.message;}finally{cleanup();active=false;$("start").disabled=false;$("stop").disabled=true;$("save").disabled=!report;$("res").disabled=false;}};
+$("stop").onclick=()=>{cancelled=true;$("status").textContent="Interrompendo…";};
+document.addEventListener("visibilitychange",()=>{if(active&&document.hidden)cancelled=true;});
+$("screen").addEventListener("webglcontextlost",e=>{e.preventDefault();cancelled=true;});
+$("save").onclick=()=>{if(!report)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="NexusVI-graphics-v2-report.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+</script>
+</html>

@@ -163,3 +163,19 @@ Validation at introduction: JavaScript syntax and six mocked state-machine
 scenarios passed locally. Actual WebGL 2 context creation was unavailable in
 the test environment; rendering and GPU timing remain unverified. This control
 is not a compatibility or game performance benchmark.
+
+## Graphics control V2 (independent experimental workloads)
+
+Open `scripts/NexusVI-Graphics-Control-V2.html` locally. Three original
+procedural scenarios exercise fragment arithmetic (64 iterations), 4096
+instanced cubes, and 8192 instanced cubes with an additional alpha-blended
+pass. Select 720p, 1080p, 1440p or 4K. Each scenario warms for two seconds
+and records eight seconds of requestAnimationFrame intervals, optional GPU
+timer queries (24 outstanding maximum), coverage and per-scenario statistics.
+Disjoint results are discarded; timed-out queries are labeled partial.
+A hidden tab, cancellation, invalid interval, WebGL error or lost context
+invalidates the report. No network requests or external assets. No shadows,
+texture stress, real GPU load/temperature/VRAM telemetry or presentation FPS.
+The workload is unrelated to the inherited runtime. Hardware execution and
+shader compilation have not been verified at introduction; the JS source
+passes a syntax check only. Keep tests short and supervised.
