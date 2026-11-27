@@ -1306,3 +1306,240 @@ Local verification and raw timings:
 ```
 
 Run `node scripts/nexusvi_core_compositor.js`. Native CI pending.
+
+## Independent CPU compositor V2: skip and opaque occlusion
+
+Prior integrated experiment showed spatial bookkeeping losing to a simple full pass on four of five profiles. V2 deliberately drops tile bookkeeping in favor of reusable scratch maps, unchanged immutable internal snapshots, a reused sorting array, skip on identical scenes, and full painting with an opaque full-coverage layer cutoff. No reliance on caller object identity; all scalar fields validated and changed records copied; duplicate/invalid input rejected before changing the prior framebuffer. Scope limited to opaque axis-aligned rectangles; not suitable for alpha blending without different semantics. Original V1 only exports existing test helpers, no algorithm change. Compare full, prior adaptive and V2, with two additional seeds and a cover/reveal profile. Full pixel validation before timing; final pixels verified after each timed trace. Wall time includes setup, validation, snapshots, sorting and drawing. JS isolate Date.now is coarse and not monotonic; native CI uses monotonic hrtime, twelve balanced rounds. No GPU or inherited runtime claims. Local results (including raw samples):
+
+```json
+{
+  "verification": {
+    "frames": 1440,
+    "pixelComparisons": 70778880,
+    "paths": {
+      "skip": 350,
+      "full": 835,
+      "occluded": 255
+    },
+    "craftedSequences": 11
+  },
+  "timing": {
+    "clock": "js_isolate_Date_now_ms",
+    "rounds": 6,
+    "results": [
+      {
+        "profile": "static",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            24,
+            24,
+            24,
+            27,
+            23,
+            23
+          ],
+          "v1": [
+            14,
+            14,
+            14,
+            13,
+            14,
+            14
+          ],
+          "v2": [
+            5,
+            4,
+            5,
+            5,
+            4,
+            4
+          ]
+        },
+        "medianMs": {
+          "full": 24,
+          "v1": 14,
+          "v2": 4.5
+        }
+      },
+      {
+        "profile": "local",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            24,
+            24,
+            24,
+            24,
+            23,
+            23
+          ],
+          "v1": [
+            26,
+            25,
+            26,
+            26,
+            26,
+            26
+          ],
+          "v2": [
+            20,
+            20,
+            19,
+            19,
+            20,
+            20
+          ]
+        },
+        "medianMs": {
+          "full": 24,
+          "v1": 26,
+          "v2": 20
+        }
+      },
+      {
+        "profile": "scroll",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            21,
+            21,
+            22,
+            21,
+            21,
+            22
+          ],
+          "v1": [
+            45,
+            45,
+            45,
+            46,
+            44,
+            45
+          ],
+          "v2": [
+            17,
+            17,
+            18,
+            18,
+            17,
+            18
+          ]
+        },
+        "medianMs": {
+          "full": 21,
+          "v1": 45,
+          "v2": 17.5
+        }
+      },
+      {
+        "profile": "churn",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            20,
+            21,
+            20,
+            20,
+            20,
+            20
+          ],
+          "v1": [
+            47,
+            48,
+            52,
+            48,
+            48,
+            48
+          ],
+          "v2": [
+            17,
+            16,
+            17,
+            17,
+            18,
+            18
+          ]
+        },
+        "medianMs": {
+          "full": 20,
+          "v1": 48,
+          "v2": 17
+        }
+      },
+      {
+        "profile": "dense",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            117,
+            119,
+            120,
+            124,
+            119,
+            121
+          ],
+          "v1": [
+            138,
+            133,
+            133,
+            136,
+            137,
+            140
+          ],
+          "v2": [
+            5,
+            6,
+            5,
+            5,
+            5,
+            5
+          ]
+        },
+        "medianMs": {
+          "full": 119.5,
+          "v1": 136.5,
+          "v2": 5
+        }
+      },
+      {
+        "profile": "cover",
+        "framesPerSample": 240,
+        "samplesMs": {
+          "full": [
+            30,
+            27,
+            27,
+            27,
+            27,
+            26
+          ],
+          "v1": [
+            36,
+            35,
+            36,
+            36,
+            37,
+            35
+          ],
+          "v2": [
+            16,
+            15,
+            16,
+            15,
+            15,
+            15
+          ]
+        },
+        "medianMs": {
+          "full": 27,
+          "v1": 36,
+          "v2": 15
+        }
+      }
+    ]
+  }
+}
+```
+
+Run `node scripts/nexusvi_core_v2.js`. Native CI pending.

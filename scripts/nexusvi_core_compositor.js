@@ -124,4 +124,4 @@ if(typeof module!=='undefined'&&require.main===module){
   const verification=verify(),timing=bench(()=>Number(process.hrtime.bigint())/1e6,'node_monotonic_hrtime_ms');
   console.log(JSON.stringify({scope:'independent_cpu_opaque_compositor',verification,timing},null,2));
 }
-if(typeof module!=='undefined')module.exports={verify,bench,Core};
+if(typeof module!=='undefined')module.exports={verify,bench,Core,trace,oracle,same};
