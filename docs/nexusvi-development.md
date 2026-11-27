@@ -455,3 +455,34 @@ monotonic clock region. The timing harness was checked with a synthetic
 clock on one trace, not used as timing evidence. No physical GPU or runtime
 integration; real time results pending CI. Run
 `node scripts/nexusvi_sparse_arena_v2.js`.
+
+## Sparse AVL refresh elimination
+
+CI run 45987482049 completed successfully for V2. Actual prior paired
+measurements: Linux baseline 7936338.5 ns, V2 7695134.5 ns (median paired
+speedup 1.029600, 16/18 wins); Windows baseline 11307050 ns, V2 11087750 ns
+(median paired speedup 1.017215, 18/18 wins). These are instrumented logical
+replays, not runtime or GPU performance.
+
+V3 overrides only balance: it decides rotations using current child heights,
+then refreshes the node once on the no-rotation path or uses the existing
+rotation refreshes. The previous preliminary refresh is redundant on the
+rotation path. V2 remains available, with the shared harness exported and
+its default timing pair unchanged. All four rotation shapes and two
+additional crafted cases passed; 12 identical traces checked against the
+independent occupancy plan and AVL invariants after each request.
+
+| Metric | V2 | V3 |
+|---|---:|---:|
+| accepted | 7611 | 7611 |
+| visits | 56568 | 56568 |
+| candidates | 9164 | 9164 |
+| mutations | 245979 | 245979 |
+| recalculations | 196688 | 185525 |
+| rotations | 15620 | 15620 |
+
+Counts measured in a JS isolate with equivalent strict assertions. All 12
+arenas fully reclaimed; no time improvement inferred from refresh counts.
+The 18-pair timing harness was verified with a synthetic clock on one trace.
+Native CI will measure both versions after three warmup rounds. No changes
+to inherited runtime. Run `node scripts/nexusvi_sparse_arena_v3.js`.

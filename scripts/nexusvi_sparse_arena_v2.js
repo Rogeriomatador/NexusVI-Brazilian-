@@ -104,8 +104,8 @@ function verify(cases,out){
     for(let i=0;i<p.events.length;i++)assert.equal(offsets[i],p.events[i].expected===null?-1:p.events[i].expected);
   }
 }
-function timing(cases,clock){
-  const names=['baseline','candidate'],classes=[SparseArena,SparseArenaV2],samples=[];
+function timing(cases,clock,classes=[SparseArena,SparseArenaV2]){
+  const names=['baseline','candidate'],samples=[];
   for(let i=0;i<3;i++)for(const C of classes)verify(cases,execute(C,cases));
   for(let i=0;i<18;i++){
     const order=i%2?[1,0]:[0,1],ns={};
@@ -120,4 +120,4 @@ if(require.main===module){
   assert.equal(process.argv.length,2);const cases=suite(),result=experiment(cases);
   const origin=process.hrtime.bigint();console.log(JSON.stringify({...result,timing:timing(cases,()=>Number(process.hrtime.bigint()-origin)),node:process.version,platform:process.platform},null,2));
 }
-module.exports={experiment,suite,timing,tests};
+module.exports={SparseArenaV2,experiment,suite,timing,tests,checked,plan};
