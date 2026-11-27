@@ -103,3 +103,17 @@ not statistical significance or proof of order effects. The reader validates
 structure, not provenance or the truth of self-reported timings. CI checks
 both a real generated report and deliberate truncation. Build with
 `rustc +stable --edition=2024 -O scripts/nexusvi_synthetic_report.rs -o nexusvi_report`.
+
+## Independent range allocation model
+
+The standalone `scripts/nexusvi_range_arena.rs` models bounded logical byte
+ranges without mapping real memory or interacting with the inherited runtime.
+It implements aligned first-fit allocation, splitting free ranges, two-sided
+coalescing, and serial-tagged handles to reject stale frees within one arena.
+Handles are arena-local; they are not authentication tokens and must not be
+transferred between arenas. The model is single-threaded, has a linear search
+across free ranges, and does not claim runtime or GPU performance improvements.
+Seven tests include an exhaustive bounded bitmap comparison and a deterministic
+20,000-operation sequence. CI compiles the independent model and executes a
+small reclamation demonstration. Build with
+`rustc +stable --edition=2024 -O scripts/nexusvi_range_arena.rs -o nexusvi_arena`.

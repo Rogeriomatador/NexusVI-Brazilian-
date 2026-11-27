@@ -8,6 +8,7 @@ on:
       - 'scripts/nexusvi_compare.rs'
       - 'scripts/nexusvi_synthetic.rs'
       - 'scripts/nexusvi_synthetic_report.rs'
+      - 'scripts/nexusvi_range_arena.rs'
       - '.github/workflows/nexusvi-tools.yml'
   workflow_dispatch:
 
@@ -45,6 +46,10 @@ jobs:
           rustc +stable --edition=2024 --test scripts/nexusvi_synthetic_report.rs -o nexusvi_report_tests.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./nexusvi_report_tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustc +stable --edition=2024 --test scripts/nexusvi_range_arena.rs -o nexusvi_arena_tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./nexusvi_arena_tests.exe --nocapture
           exit $LASTEXITCODE
       - name: Run synthetic control (not a performance gate)
         run: |
@@ -63,3 +68,9 @@ jobs:
           $rows | Select-Object -SkipLast 1 | ./nexusvi_report.exe
           if ($LASTEXITCODE -ne 1) { throw 'Truncated report was not rejected' }
           exit 0
+      - name: Run independent range model
+        run: |
+          rustc +stable --edition=2024 -O scripts/nexusvi_range_arena.rs -o nexusvi_arena.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./nexusvi_arena.exe
+          exit $LASTEXITCODE
