@@ -37,28 +37,44 @@ function Get-Hardware {
 }
 
 function Get-SourceIdentity {
+    param([Parameter(Mandatory)][string]$ScriptPath)
     $identity = [ordered]@{
-        collector_sha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        collector_sha256 = (Get-FileHash -LiteralPath $ScriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
         git_revision = $null
         tracked_changes = $null
+        git_status = 'standalone_or_unavailable'
     }
     try {
-        $git = Get-Command git -CommandType Application -ErrorAction Stop
-        $root = Split-Path -Parent $PSScriptRoot
-        $rev = & $git.Source -C $root rev-parse --verify HEAD 2>$null
-        if ($LASTEXITCODE -eq 0 -and "$rev" -match '^[0-9a-f]{40}$') {
-            $identity.git_revision = "$rev"
-            $changes = @(& $git.Source -C $root status --porcelain --untracked-files=no 2>$null)
+        # Multiple Git installations can return multiple ApplicationInfo objects.
+        $git = Get-Command git -CommandType Application -ErrorAction Stop |
+            Select-Object -First 1
+        $gitExe = [string]$git.Source
+        $root = Split-Path -Parent (Split-Path -Parent $ScriptPath)
+        $relative = 'scripts/nexusvi_hardware_control.ps1'
+        $expectedPath = Join-Path $root $relative
+        if (-not [string]::Equals([IO.Path]::GetFullPath($expectedPath),
+                [IO.Path]::GetFullPath($ScriptPath), [StringComparison]::OrdinalIgnoreCase)) {
+            return $identity
+        }
+        $tracked = @(& $gitExe -C $root ls-files --error-unmatch -- $relative 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $tracked.Count -ne 1 -or $tracked[0] -ne $relative) {
+            return $identity
+        }
+        $rev = @(& $gitExe -C $root rev-parse --verify HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $rev.Count -eq 1 -and $rev[0] -match '^[0-9a-f]{40}$') {
+            $identity.git_revision = [string]$rev[0]
+            $identity.git_status = 'revision_observed'
+            $changes = @(& $gitExe -C $root status --porcelain --untracked-files=no 2>$null)
             if ($LASTEXITCODE -eq 0) { $identity.tracked_changes = ($changes.Count -gt 0) }
         }
     } catch {
-        # A standalone download can still be identified by its SHA-256.
+        $identity.git_status = 'git_query_failed'
     }
     return $identity
 }
 
 $hardware = Get-Hardware
-$identity = Get-SourceIdentity
+$identity = Get-SourceIdentity -ScriptPath $PSCommandPath
 
 # The child command is fixed except for a validated integer duration.
 # It does not execute or attach to any user-supplied application.

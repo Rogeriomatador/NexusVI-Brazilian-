@@ -91,7 +91,30 @@ jobs:
           if ($null -ne $report.metrics.fps -or $null -ne $report.metrics.vram_bytes) {
             throw 'CPU control must not claim GPU measurements'
           }
-          if ($report.source.collector_sha256 -notmatch '^[0-9a-f]{64}$' -or $report.source.git_revision -ne $env:GITHUB_SHA) {
-            throw 'Source identity mismatch'
+          $actualHash = (Get-FileHash -LiteralPath ./scripts/nexusvi_hardware_control.ps1 -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($report.source.collector_sha256 -ne $actualHash) {
+            throw 'Collector hash mismatch'
+          }
+          if ($report.source.git_revision -ne $env:GITHUB_SHA -or $report.source.git_status -ne 'revision_observed') {
+            throw "Source revision mismatch; status=$($report.source.git_status); observed=$($report.source.git_revision); expected=$env:GITHUB_SHA"
           }
           $report | ConvertTo-Json -Depth 8 | Write-Output
+      - name: Validate standalone collector in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP ('nexusvi-control-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $dir | Out-Null
+          try {
+            $file = Join-Path $dir 'nexusvi_hardware_control.ps1'
+            Copy-Item -LiteralPath ./scripts/nexusvi_hardware_control.ps1 -Destination $file
+            $report = (& $file -Seconds 5 -SampleMs 250 | Out-String | ConvertFrom-Json)
+            if ($report.source.git_revision -ne $null -or $report.source.git_status -ne 'standalone_or_unavailable') {
+              throw 'Standalone file must not claim a Git revision'
+            }
+            if ($report.source.collector_sha256 -ne (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -or $report.metrics.sample_count -lt 2) {
+              throw 'Standalone report validation failed'
+            }
+          } finally {
+            Remove-Item -LiteralPath $dir -Recurse -Force
+          }

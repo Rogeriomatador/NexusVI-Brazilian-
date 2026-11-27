@@ -12,6 +12,21 @@ stability and performance evaluation using synthetic workloads and authorized so
 - No proprietary game data, leaked material or circumvention tools are part of
   the NexusVI contribution. Preserve upstream copyright and attribution.
 
+## NexusVI Brazil — credits
+
+- **[Rogeriomatador](https://github.com/Rogeriomatador)** — NexusVI Brazil
+  project owner, direction, testing coordination and contributions.
+- **ChatGPT (OpenAI)** — AI-assisted development, code review and documentation
+  of the independent NexusVI tools.
+- **[Belobug](https://github.com/Belobug)**, **[Marvisak](https://github.com/Marvisak)**
+  and the original VIctory contributors — upstream foundation. The original
+  README and full upstream credits are preserved below; their reported
+  measurements are not our own.
+
+Our additions are independent synthetic measurement and validation tools,
+not a claim of authorship of the inherited runtime. GPL-3.0-or-later applies
+to our contributions; original notices and exceptions remain unchanged.
+
 **Validation status:** the inherited results below are upstream reports, not
 NexusVI measurements. No independent hardware performance claim is made yet.
 

@@ -143,3 +143,10 @@ Run from a Windows PowerShell session with normal local script permissions:
 
 The report lives outside the repository. Its purpose is to test the independent
 measurement pipeline, not to evaluate a game or the inherited runtime.
+
+The collector can also run as a standalone downloaded PowerShell file, without
+Git or any game. In this mode the source SHA-256 identifies the file and the Git
+revision is null. A revision is reported only when the expected collector path
+is tracked in a local checkout. The CI also exercises a standalone copy using
+Windows PowerShell 5.1. Do not use a revision claim as a substitute for checking
+the actual collector hash or local modifications.
