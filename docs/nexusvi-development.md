@@ -654,3 +654,28 @@ including line endings. This does not verify loaded code against subsequent
 file changes, CPU frequency, host load, or physical hardware identity.
 Ten context core cases, 11 timing and 13 comparison cases plus one context
 integration passed in a JS isolate; actual native capture pending CI.
+
+## Same-process repeatability control
+
+CI 45989681557 passed both platforms. Context capture and bundle checks
+were observed in the job logs:
+
+- standalone (ubuntu-latest): {"cpu_model":"AMD EPYC 7763 64-Core Processor","logical_cpus":4,"os_release":"7.0.0-1020-azure","v8":"13.6.233.17-node.63"}; context tests=true; bundle=true.
+- standalone (windows-latest): {"cpu_model":"AMD EPYC 7763 64-Core Processor","logical_cpus":4,"os_release":"10.0.26100","v8":"12.4.254.21-node.57"}; context tests=true; bundle=true.
+
+The new repeatability control uses six consecutive blocks in one Node
+process, each with three warmup rounds and 18 measured rounds of the
+existing 9600-request workload. All six execution orders remain balanced
+within each block. It reports raw timings, block median time, within-block
+paired speedup relative to linear, median absolute deviation normalized by
+the median, and min/max span normalized by the median. These describe this
+short session only; they do not establish an independent-run noise bound,
+a confidence interval, hardware equivalence or a regression threshold.
+The same context snapshot is attached to each block and source digests
+are checked again at the end; no claim of continuous environment stability.
+Ten synthetic analyzer cases passed, and the full six-block harness ran
+in a JS isolate with a simulated clock: 324 measured replays, 3110400
+requests, exact placement verification. Simulated timing values are not
+measurement evidence. Native CI records the real report in job logs; the
+existing fixed artifact manifest remains unchanged.
+Run `node scripts/nexusvi_repeatability.js`.

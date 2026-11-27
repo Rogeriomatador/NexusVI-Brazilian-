@@ -22,6 +22,7 @@ on:
       - 'scripts/nexusvi_sparse_scaling.js'
       - 'scripts/nexusvi_arena_timing.js'
       - 'scripts/nexusvi_timing_context.js'
+      - 'scripts/nexusvi_repeatability.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -196,6 +197,10 @@ jobs:
       - name: Verify and measure larger fragmented AVL arenas
         run: |
           node scripts/nexusvi_sparse_scaling.js
+          exit $LASTEXITCODE
+      - name: Measure same-process logical repeatability
+        run: |
+          node scripts/nexusvi_repeatability.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |
