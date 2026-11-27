@@ -90,3 +90,16 @@ report structure, not speed thresholds. Compiler optimizations, host scheduling,
 CPU cache effects and timer resolution can affect the timing. This standalone
 report compares two algorithms, not two Git revisions; it is intentionally not
 accepted directly as input to the revision comparator.
+
+## Synthetic report verification
+
+The independent `scripts/nexusvi_synthetic_report.rs` consumes the raw CPU
+control report from stdin. It validates workload/version, declared counts,
+work budget, seed, exact sequential pair IDs, positive unsigned durations,
+and absence of trailing rows, within a 128 KiB input limit. It reports the
+ratio of medians, median paired speedup and results grouped by which algorithm
+ran first, plus counts of wins, ties and losses. These are descriptive measures,
+not statistical significance or proof of order effects. The reader validates
+structure, not provenance or the truth of self-reported timings. CI checks
+both a real generated report and deliberate truncation. Build with
+`rustc +stable --edition=2024 -O scripts/nexusvi_synthetic_report.rs -o nexusvi_report`.
