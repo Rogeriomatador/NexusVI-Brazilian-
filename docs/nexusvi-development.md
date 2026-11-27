@@ -679,3 +679,30 @@ requests, exact placement verification. Simulated timing values are not
 measurement evidence. Native CI records the real report in job logs; the
 existing fixed artifact manifest remains unchanged.
 Run `node scripts/nexusvi_repeatability.js`.
+
+## Interleaved A/A and A/B control
+
+Previous native repeatability CI 45990047676 passed. Six-block observed
+median absolute deviation and normalized span of block medians:
+
+| Runner | Policy | Relative MAD | Relative span |
+|---|---|---:|---:|
+| standalone (windows-latest) | linear | 3.7239% | 13.4361% |
+| standalone (windows-latest) | dense | 3.1058% | 7.3257% |
+| standalone (windows-latest) | sparse | 3.9440% | 11.5251% |
+| standalone (ubuntu-latest) | linear | 1.1458% | 2.7982% |
+| standalone (ubuntu-latest) | dense | 0.4955% | 3.8772% |
+| standalone (ubuntu-latest) | sparse | 0.3634% | 1.4410% |
+
+The same-process span is descriptive and cannot define a universal threshold.
+The new interleaved experiment runs A1 and A2 using exactly the same V2 class,
+and B using the original AVL class, in all six orders six times. Each sample
+replays 9600 requests with independent exact placement validation outside
+timing. It reports A/A signed median ratio and median/max absolute log ratio;
+B relative to the geometric mean of A1 and A2, order-specific ratios and
+counts slower/faster than both identical controls. No statistical test or
+causal regression verdict is claimed; order, JIT and garbage collection can
+still influence results. Existing implementation behavior is unchanged,
+only harness exports added. Ten synthetic checks and 108 full-suite measured
+path executions (1036800 requests) passed in a JS isolate with a synthetic
+clock. Native timings pending CI. Run `node scripts/nexusvi_interleaved_control.js`.

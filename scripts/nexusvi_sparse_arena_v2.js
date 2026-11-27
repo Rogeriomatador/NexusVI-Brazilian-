@@ -120,4 +120,4 @@ if(require.main===module){
   assert.equal(process.argv.length,2);const cases=suite(),result=experiment(cases);
   const origin=process.hrtime.bigint();console.log(JSON.stringify({...result,timing:timing(cases,()=>Number(process.hrtime.bigint()-origin)),node:process.version,platform:process.platform},null,2));
 }
-module.exports={SparseArenaV2,experiment,suite,timing,tests,checked,plan};
+module.exports={SparseArenaV2,experiment,suite,timing,tests,checked,plan,execute,verify};
