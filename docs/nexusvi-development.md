@@ -143,3 +143,23 @@ Run in a fresh Windows PowerShell session with normal local script permissions:
 A standalone download reports a null Git revision and its actual script hash.
 CI checks both a tracked checkout and a standalone Windows PowerShell 5.1 copy.
 The workload evaluates only the independent CPU measurement pipeline.
+
+## Independent browser graphics control (experimental)
+
+Open `scripts/NexusVI-Graphics-Control.html` locally in a WebGL 2-capable
+browser with hardware acceleration. This original procedural fullscreen
+shader uses no game files, external assets, network requests or inherited
+runtime code. Select a fixed internal resolution, keep the tab visible,
+and run a 2-second warmup and 15-second measurement. Save the JSON locally.
+The report includes raw requestAnimationFrame intervals, descriptive frame
+statistics, renderer strings and optional disjoint timer query measurements.
+RAF cadence is not direct display-present FPS and is normally refresh-limited.
+Renderer strings are not independent proof of physical GPU use. Timer queries
+may be unsupported, disjoint or time out; such results are explicitly marked.
+VRAM usage, GPU load and temperature are unavailable. Stop, hidden-tab and
+context-loss events invalidate the report. No automatic uploads occur.
+
+Validation at introduction: JavaScript syntax and six mocked state-machine
+scenarios passed locally. Actual WebGL 2 context creation was unavailable in
+the test environment; rendering and GPU timing remain unverified. This control
+is not a compatibility or game performance benchmark.

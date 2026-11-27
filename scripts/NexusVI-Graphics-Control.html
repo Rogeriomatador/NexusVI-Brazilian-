@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusVI — Graphics Control</title>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<style>
+body{margin:20px auto;padding:0 16px;max-width:960px;background:#111827;color:#eee;font:16px system-ui} canvas{width:100%;height:auto;background:#000;border:1px solid #475569} button,select{padding:10px;margin:4px;background:#253449;color:white;border:1px solid #64748b;border-radius:6px} button:disabled{opacity:.45} pre{white-space:pre-wrap;background:#1e293b;padding:12px} small{color:#cbd5e1}
+</style>
+<h1>NexusVI — Graphics Control</h1>
+<p>Teste WebGL 2 independente. Não executa jogos e não envia dados. Mantenha a aba visível.</p>
+<label>Resolução <select id="size"><option value="960">960 × 540</option><option value="1280">1280 × 720</option><option value="1920">1920 × 1080</option></select></label>
+<button id="start">Iniciar teste</button><button id="stop" disabled>Parar</button><button id="save" disabled>Salvar JSON</button>
+<p id="status" role="status">Pronto. Aquecimento de 2 s e medição de 15 s.</p>
+<canvas id="canvas" width="960" height="540"></canvas>
+<pre id="output">Nenhum resultado.</pre>
+<small>FPS mede a cadência de requestAnimationFrame, normalmente limitada pela tela. Tempo GPU depende de EXT_disjoint_timer_query_webgl2. VRAM, temperatura e utilização não são medidas.</small>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('canvas');
+let active=null, report=null;
+const vs=`#version 300 es
+void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0,1);}`;
+const fs=`#version 300 es
+precision highp float;
+uniform vec2 resolution;
+uniform float phase;
+out vec4 color;
+void main(){vec2 p=(gl_FragCoord.xy*2.0-resolution)/resolution.y;vec2 z=p;float v=0.0;
+for(int i=0;i<24;i++){z=vec2(sin(z.y*2.7+phase*.3),cos(z.x*2.3-phase*.2))+p*.46;v+=sin(dot(z,z)*3.1+float(i)*.27);}
+vec3 c=.5+.5*cos(v*.21+vec3(0,2,4)+phase*.18);color=vec4(c,1);}`;
+function stats(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),n=s.length,m=n>>1;return {count:n,median_ms:n%2?s[m]:(s[m-1]+s[m])/2,p95_ms:s[Math.ceil(n*.95)-1],p99_ms:s[Math.ceil(n*.99)-1],mean_ms:s.reduce((x,y)=>x+y,0)/n};}
+function shader(gl,type,src){const s=gl.createShader(type);if(!s)throw Error('Falha ao criar shader');gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){const e=gl.getShaderInfoLog(s);gl.deleteShader(s);throw Error(e||'Shader inválido');}return s;}
+function program(gl){let v,f,p;try{v=shader(gl,gl.VERTEX_SHADER,vs);f=shader(gl,gl.FRAGMENT_SHADER,fs);p=gl.createProgram();if(!p)throw Error('Falha ao criar programa');gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p)||'Link inválido');return p;}catch(e){if(p)gl.deleteProgram(p);throw e;}finally{if(v)gl.deleteShader(v);if(f)gl.deleteShader(f);}}
+function cleanup(r){cancelAnimationFrame(r.raf);clearTimeout(r.timeout);if(!r.gl.isContextLost()){for(const q of r.pending)r.gl.deleteQuery(q.query);r.gl.deleteProgram(r.prog);r.gl.deleteVertexArray(r.vao);}r.pending=[];}
+function controls(running){$('start').disabled=running;$('stop').disabled=!running;$('size').disabled=running;$('save').disabled=running||!report;}
+function abort(reason){const r=active;active=null;if(r)cleanup(r);report=null;controls(false);$('status').textContent=reason;$('output').textContent='Teste incompleto — sem relatório válido.';}
+function invalidateGpu(r,reason){r.gpuStatus=reason;r.gpu=[];for(const q of r.pending)r.gl.deleteQuery(q.query);r.pending=[];}
+function poll(r){if(!r.ext||r.gpuStatus!=='available')return;const g=r.gl;if(g.getParameter(r.ext.GPU_DISJOINT_EXT)){invalidateGpu(r,'disjoint');return;}while(r.pending.length){const q=r.pending[0];if(!g.getQueryParameter(q.query,g.QUERY_RESULT_AVAILABLE))break;const ns=g.getQueryParameter(q.query,g.QUERY_RESULT);g.deleteQuery(q.query);r.pending.shift();if(!Number.isFinite(ns)||ns<=0){invalidateGpu(r,'invalid_timer');return;}r.gpu.push({frame:q.frame,ms:ns/1e6});}}
+function finish(r){if(active!==r)return;if(r.frames.length<20){abort('Amostras insuficientes.');return;}const elapsed=r.frames.reduce((a,b)=>a+b,0);report={schema_version:1,scope:'independent_webgl2_synthetic_only',workload:'procedural_fullscreen24_v1',started_utc:r.utc,width:r.width,height:r.height,warmup_ms:2000,requested_measure_ms:15000,measured_interval_ms:elapsed,renderer:r.renderer,renderer_is_unverified:true,frame_intervals_ms:r.frames,frame_stats:stats(r.frames),raf_fps:r.frames.length*1000/elapsed,gpu_timer_status:r.gpuStatus,gpu_samples:r.gpu,gpu_stats:stats(r.gpu.map(x=>x.ms)),gpu_utilization_pct:null,vram_bytes:null,gpu_temperature_c:null};active=null;cleanup(r);controls(false);$('status').textContent='Concluído. Revise os dados antes de compartilhar.';$('output').textContent=JSON.stringify({...report,frame_intervals_ms:'incluídos no JSON',gpu_samples:'incluídos no JSON'},null,2);}
+function tick(r,t){if(active!==r)return;try{if(document.hidden||r.gl.isContextLost())throw Error('Aba oculta ou contexto perdido');const g=r.gl;poll(r);if(r.drainAt!==null){if(!r.pending.length||t-r.drainAt>=2000){if(r.pending.length)invalidateGpu(r,'query_timeout');finish(r);return;}r.raf=requestAnimationFrame(x=>tick(r,x));return;}
+if(r.first===null)r.first=t;
+if(t-r.first>=2000&&r.measureAt===null){r.measureAt=t;r.prev=t;}
+else if(r.measureAt!==null){const dt=t-r.prev;if(!(dt>0&&Number.isFinite(dt)))throw Error('Intervalo inválido');r.frames.push(dt);r.prev=t;if(t-r.measureAt>=15000){r.drainAt=t;r.raf=requestAnimationFrame(x=>tick(r,x));return;}}
+let q=null;if(r.measureAt!==null&&r.ext&&r.gpuStatus==='available'&&r.pending.length<8){q=g.createQuery();if(q)g.beginQuery(r.ext.TIME_ELAPSED_EXT,q);}
+g.uniform1f(r.phase,(t-r.first)/1000);g.drawArrays(g.TRIANGLES,0,3);if(q){g.endQuery(r.ext.TIME_ELAPSED_EXT);r.pending.push({query:q,frame:r.frames.length});}if(g.getError()!==g.NO_ERROR)throw Error('Erro WebGL');$('status').textContent=r.measureAt===null?'Aquecimento…':`Medindo ${Math.min(15,(t-r.measureAt)/1000).toFixed(1)} / 15 s`;r.raf=requestAnimationFrame(x=>tick(r,x));}catch(e){abort(e.message);}}
+$('start').onclick=()=>{if(active)return;report=null;controls(true);$('output').textContent='Medindo…';let gl,prog,vao;try{if(document.hidden)throw Error('Aba oculta');const width=Number($('size').value),height=width*9/16;if(![960,1280,1920].includes(width))throw Error('Resolução inválida');canvas.width=width;canvas.height=height;gl=canvas.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false});if(!gl||gl.isContextLost())throw Error('WebGL 2 indisponível');if(gl.drawingBufferWidth!==width||gl.drawingBufferHeight!==height)throw Error('Resolução real diferente');prog=program(gl);vao=gl.createVertexArray();if(!vao)throw Error('VAO indisponível');gl.bindVertexArray(vao);gl.viewport(0,0,width,height);gl.useProgram(prog);gl.uniform2f(gl.getUniformLocation(prog,'resolution'),width,height);const phase=gl.getUniformLocation(prog,'phase'),ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'),debug=gl.getExtension('WEBGL_debug_renderer_info');const renderer={reported_vendor:gl.getParameter(gl.VENDOR),reported_renderer:gl.getParameter(gl.RENDERER),unmasked_renderer:debug?gl.getParameter(debug.UNMASKED_RENDERER_WEBGL):null};const r={gl,prog,vao,phase,ext,renderer,width,height,utc:new Date().toISOString(),gpuStatus:ext?'available':'unsupported',pending:[],gpu:[],frames:[],first:null,measureAt:null,prev:null,drainAt:null,raf:0,timeout:0};active=r;r.timeout=setTimeout(()=>{if(active===r)abort('Tempo limite.');},30000);r.raf=requestAnimationFrame(t=>tick(r,t));}catch(e){if(!active&&gl&&!gl.isContextLost()){if(prog)gl.deleteProgram(prog);if(vao)gl.deleteVertexArray(vao);}abort(e.message);}};
+$('stop').onclick=()=>abort('Interrompido pelo usuário.');
+document.addEventListener('visibilitychange',()=>{if(active&&document.hidden)abort('Aba oculta: teste invalidado.');});
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();if(active)abort('Contexto gráfico perdido.');});
+$('save').onclick=()=>{if(!report||active)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='NexusVI-graphics-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+</script>
+</html>
