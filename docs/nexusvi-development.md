@@ -1002,3 +1002,9 @@ Adaptive is not universally superior: repeated profile gains no write
 reduction over fixed16 while waiting increases. No measured wall time,
 real storage or runtime integration. Snapshot-only semantics remain.
 Native CI pending. Run `node scripts/nexusvi_batch_adaptive.js`.
+
+## Independent batch cost sensitivity
+
+Prior adaptive CI 45995247153 passed on both platforms. Compare abstract nonnegative integer costs for writes, reads and logical waiting, using exact BigInt arithmetic. Five checks and 144 illustrative scenarios passed in JS isolate. Grid is not a probability distribution; buffer overhead and physical timing excluded. Native CI pending.
+
+[{"profile":"uniform","wins":{"fixed16":0,"fixed64":9,"adaptive":0},"ties":27,"scenarios":36},{"profile":"hot","wins":{"fixed16":24,"fixed64":12,"adaptive":0},"ties":0,"scenarios":36},{"profile":"repeated","wins":{"fixed16":27,"fixed64":0,"adaptive":0},"ties":9,"scenarios":36},{"profile":"mixed","wins":{"fixed16":24,"fixed64":12,"adaptive":0},"ties":0,"scenarios":36}]
