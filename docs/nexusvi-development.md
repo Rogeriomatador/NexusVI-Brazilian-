@@ -486,3 +486,35 @@ arenas fully reclaimed; no time improvement inferred from refresh counts.
 The 18-pair timing harness was verified with a synthetic clock on one trace.
 Native CI will measure both versions after three warmup rounds. No changes
 to inherited runtime. Run `node scripts/nexusvi_sparse_arena_v3.js`.
+
+## Sparse AVL successor extraction (V4, V2 base)
+
+CI run 45987782285 passed V3 correctness, but its actual paired timing
+regressed: Linux V2 median 7310610.5 ns, V3 7786255 ns (paired ratio
+0.938924, 0/18 candidate wins); Windows V2 11344850 ns, V3 12010400 ns
+(paired ratio 0.944933, 4/18 wins). Therefore V2 is the reference for
+this experiment, not V3. Preserve V3 as a negative result; no removal or
+claim that the regression is universal.
+
+V4 derives from V2 and changes only deletion of a two-child node: extract
+its in-order successor in one recursive descent, substituting coordinates
+before rebalancing. The former separate successor lookup is eliminated.
+Six crafted cases passed, including immediate and deeper successors with
+and without right children. The same 12 traces are checked against the
+independent occupancy plan and AVL invariants after each request.
+
+| Metric | V2 | V4 |
+|---|---:|---:|
+| accepted | 7611 | 7611 |
+| visits | 56568 | 56568 |
+| candidates | 9164 | 9164 |
+| mutations | 245979 | 232659 |
+| recalculations | 196688 | 196688 |
+| rotations | 15620 | 15620 |
+
+Counts observed in JS isolate with equivalent strict assertions, 9600
+requests per implementation. All 12 arenas fully reclaimed. The timing
+harness passed a synthetic-clock check on one trace; this is not timing
+evidence. Native CI will measure 18 alternating pairs after three warmup
+rounds. No inherited runtime changes or physical GPU performance claims.
+Run `node scripts/nexusvi_sparse_arena_v4.js`.
