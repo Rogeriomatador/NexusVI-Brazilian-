@@ -6,7 +6,7 @@ Our work focuses on reproducible compatibility research, cross-vendor testing,
 stability and performance evaluation using synthetic workloads and authorized software.
 
 - [Development charter and provenance](docs/nexusvi-development.md)
-- Independent native controls: [OpenGL shaders and compute](scripts/nexusvi_gl_pipeline.py), [Vulkan discovery](scripts/nexusvi_vulkan_probe.py). Software OpenGL validation passed locally; Vulkan instance creation was unavailable locally. No physical GPU or commercial title compatibility is established.
+- Independent native controls: [OpenGL shaders and compute](scripts/nexusvi_gl_pipeline.py), [Vulkan discovery](scripts/nexusvi_vulkan_probe.py), [texture and buffer transfer suite](scripts/nexusvi_gl_transfers.py). Software OpenGL validation passed locally; Vulkan instance creation was unavailable locally. No physical GPU or commercial title compatibility is established.
 - Original base: Belobug's `a-publier` revision `4eb6cfdf`.
 - The earlier [XCL-based NexusVI](https://github.com/Rogeriomatador/NexusVI) is
   a separate GPL-2.0-only project. Its source is not incorporated here.

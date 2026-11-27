@@ -40,6 +40,7 @@ on:
       - 'scripts/nexusvi_core_v2.js'
       - 'scripts/nexusvi_egl_control.py'
       - 'scripts/nexusvi_gl_pipeline.py'
+      - 'scripts/nexusvi_gl_transfers.py'
       - 'scripts/nexusvi_vulkan_probe.py'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
@@ -315,6 +316,6 @@ jobs:
         env:
           EGL_PLATFORM: surfaceless
           LIBGL_ALWAYS_SOFTWARE: '1'
-        run: python3 scripts/nexusvi_gl_pipeline.py
+        run: python3 scripts/nexusvi_gl_transfers.py
       - name: Discover Vulkan software device (no workload)
         run: python3 scripts/nexusvi_vulkan_probe.py
