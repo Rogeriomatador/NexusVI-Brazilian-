@@ -38,6 +38,7 @@ on:
       - 'scripts/nexusvi_tile_binning.js'
       - 'scripts/nexusvi_core_compositor.js'
       - 'scripts/nexusvi_core_v2.js'
+      - 'scripts/nexusvi_egl_control.py'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -300,3 +301,16 @@ jobs:
             evidence-manifest.json
           if-no-files-found: error
           retention-days: 30
+
+  native-egl-software:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Mesa software graphics
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri
+      - name: Verify native API pixel readback (software only)
+        env:
+          EGL_PLATFORM: surfaceless
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: python3 scripts/nexusvi_egl_control.py

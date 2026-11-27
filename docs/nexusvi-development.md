@@ -1543,3 +1543,7 @@ Prior integrated experiment showed spatial bookkeeping losing to a simple full p
 ```
 
 Run `node scripts/nexusvi_core_v2.js`. Native CI pending.
+
+## Independent native EGL/OpenGL correctness control
+
+Original Linux Python ctypes program initializes an EGL pbuffer, binds desktop OpenGL, uses scissor-restricted color clears to compose moving overlapping opaque rectangles, then reads RGBA8 pixels and compares against a separate pixel-major CPU oracle. No external data, shader compilation, triangles, FPS, GPU memory measurements, or inherited runtime. Fail closed on initialization or pixel error. Uses software rendering in CI; physical GPU verification is always false. Local actual Linux execution with Mesa 25.0.7 llvmpipe LLVM 19.1.7, OpenGL 4.5 compatibility, EGL 1.5: 64 frames, 196608 pixels, 786432 bytes compared, zero mismatches. Source SHA-256 of locally tested file: d59464806afe6b2a74a9737837a3a4a7ec3ff5411d3140ba1b37df3eafdf40a7. Run `python3 scripts/nexusvi_egl_control.py` on Linux with libEGL and libGL plus a working EGL implementation. Separate Linux CI job added; remote result pending. This is native API execution on software, not hardware acceleration or port compatibility evidence.
