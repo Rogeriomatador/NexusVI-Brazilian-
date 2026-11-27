@@ -1049,3 +1049,56 @@ Local JS isolate: 12 crafted checks, 720 frames, 8847360 exact pixel comparisons
 ```
 
 Run `node scripts/nexusvi_dirty_tiles.js`. Native CI scheduled, not yet confirmed. No FPS improvement claimed.
+
+## Independent CPU tile binning
+
+A standalone synthetic opaque rectangle rasterizer compares scanning all 96 layers per tile with a spatial bin index built each frame. Rectangles are clipped and inserted in stable z/ID order into overlapping 16x16 tiles of a 256x192 framebuffer. A separate rectangle-major per-pixel reference verifies both output buffers. The index is rebuilt on every frame, not integrated with the dirty tile prototype. Counts separate rectangle/tile checks, build clipping checks, bin entries and paint writes; bin construction and allocations are not free. No wall time, GPU, game assets or runtime integration. Fullscreen is an intentionally adverse case.
+
+Local JS isolate: 9 crafted checks, 144 frames, 7077888 pixels checked against each of two implementations (14155776 comparisons). Results:
+
+```json
+[
+  {
+    "profile": "small",
+    "frames": 36,
+    "linearChecks": 663552,
+    "indexedChecks": 8625,
+    "buildChecks": 3456,
+    "entries": 8625,
+    "paint": 569949,
+    "peakEntries": 275
+  },
+  {
+    "profile": "mixed",
+    "frames": 36,
+    "linearChecks": 663552,
+    "indexedChecks": 31675,
+    "buildChecks": 3456,
+    "entries": 31675,
+    "paint": 5434684,
+    "peakEntries": 1148
+  },
+  {
+    "profile": "offscreen",
+    "frames": 36,
+    "linearChecks": 663552,
+    "indexedChecks": 2908,
+    "buildChecks": 3456,
+    "entries": 2908,
+    "paint": 189054,
+    "peakEntries": 109
+  },
+  {
+    "profile": "fullscreen",
+    "frames": 36,
+    "linearChecks": 663552,
+    "indexedChecks": 663552,
+    "buildChecks": 3456,
+    "entries": 663552,
+    "paint": 169869312,
+    "peakEntries": 18432
+  }
+]
+```
+
+Run `node scripts/nexusvi_tile_binning.js`. Native CI not yet verified. No FPS claim.
