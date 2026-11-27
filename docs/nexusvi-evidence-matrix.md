@@ -8,6 +8,8 @@ Base: upstream 4eb6cfdf9e61cb112f1f811344ec0dd309eddd6c. Prior independent check
 | CPU compositing | node scripts/nexusvi_core_v2.js | Prior local exact-pixel tests; CPU only |
 | Native OpenGL | python3 scripts/nexusvi_native_evidence.py | Fresh local software run; 5 records checked, source SHA-256 included |
 | Vulkan discovery | python3 scripts/nexusvi_vulkan_probe.py | Local -9, no usable driver |
+| Vulkan host fixture | c++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined -O2 scripts/nexusvi_vk_fixture_test.cpp -o fixture && ./fixture | 30,842 checks passed locally; no Vulkan call |
+| Vulkan compute and SPIR-V | native-vulkan-software job in nexusvi-tools.yml | Implemented, native build and execution pending; original and optimized shader variants, validation layer and guard checks required |
 | Loader and system libraries | Inherited Rust workspace | No independent runtime validation |
 | Shader translation | No independent implementation | GLSL compilation is not console shader translation |
 | Graphics translation layer | No independent implementation | OpenGL controls are not a D3D translation layer |
