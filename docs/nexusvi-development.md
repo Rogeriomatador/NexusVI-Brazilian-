@@ -1102,3 +1102,207 @@ Local JS isolate: 9 crafted checks, 144 frames, 7077888 pixels checked against e
 ```
 
 Run `node scripts/nexusvi_tile_binning.js`. Native CI not yet verified. No FPS claim.
+
+## Independent integrated CPU compositor (Core prototype)
+
+Combines dirty-region tracking, spatial bins restricted to changed tiles, and a full-frame rectangle-major fallback when at least half the tiles are dirty. Unchanged frames skip painting. The threshold is illustrative, not tuned. Compares full, dirty-only and adaptive paths on the same generated scenes. Independent pixel-major oracle checks every pixel of each path before timing; final outputs of each timed trace also checked. Timed work includes scene validation, copying, sorting, index construction, allocations, and painting; excludes scene generation and comparison. All six execution orders balanced. Local JS-isolate Date.now timings are coarse wall-clock observations (not monotonic; scheduling and JIT effects possible), not native Node or GPU evidence. Native CI uses monotonic hrtime and twelve rounds; no performance gate. Dense overlap is deliberately adverse. No inherited runtime, game assets or hardware GPU claims.
+
+Local verification and raw timings:
+
+```json
+{
+  "verification": {
+    "frames": 720,
+    "comparisons": 106610688,
+    "paths": {
+      "skip": 220,
+      "binned": 321,
+      "full": 179
+    },
+    "crafted": 9
+  },
+  "timing": {
+    "clock": "js_isolate_Date_now_ms",
+    "rounds": 6,
+    "results": [
+      {
+        "profile": "static",
+        "framesPerSample": 144,
+        "samplesMs": {
+          "full": [
+            14,
+            14,
+            14,
+            13,
+            14,
+            14
+          ],
+          "dirty": [
+            10,
+            11,
+            11,
+            11,
+            11,
+            11
+          ],
+          "adaptive": [
+            8,
+            8,
+            10,
+            8,
+            8,
+            8
+          ]
+        },
+        "medianMs": {
+          "full": 14,
+          "dirty": 11,
+          "adaptive": 8
+        }
+      },
+      {
+        "profile": "local",
+        "framesPerSample": 144,
+        "samplesMs": {
+          "full": [
+            21,
+            13,
+            13,
+            14,
+            14,
+            14
+          ],
+          "dirty": [
+            27,
+            19,
+            21,
+            19,
+            19,
+            18
+          ],
+          "adaptive": [
+            15,
+            15,
+            16,
+            16,
+            15,
+            16
+          ]
+        },
+        "medianMs": {
+          "full": 14,
+          "dirty": 19,
+          "adaptive": 15.5
+        }
+      },
+      {
+        "profile": "scroll",
+        "framesPerSample": 144,
+        "samplesMs": {
+          "full": [
+            13,
+            12,
+            12,
+            13,
+            12,
+            12
+          ],
+          "dirty": [
+            129,
+            121,
+            121,
+            122,
+            130,
+            125
+          ],
+          "adaptive": [
+            29,
+            28,
+            29,
+            29,
+            31,
+            29
+          ]
+        },
+        "medianMs": {
+          "full": 12,
+          "dirty": 123.5,
+          "adaptive": 29
+        }
+      },
+      {
+        "profile": "churn",
+        "framesPerSample": 144,
+        "samplesMs": {
+          "full": [
+            12,
+            12,
+            11,
+            12,
+            12,
+            12
+          ],
+          "dirty": [
+            53,
+            53,
+            53,
+            58,
+            52,
+            52
+          ],
+          "adaptive": [
+            27,
+            28,
+            28,
+            28,
+            28,
+            27
+          ]
+        },
+        "medianMs": {
+          "full": 12,
+          "dirty": 53,
+          "adaptive": 28
+        }
+      },
+      {
+        "profile": "dense",
+        "framesPerSample": 144,
+        "samplesMs": {
+          "full": [
+            73,
+            72,
+            74,
+            71,
+            72,
+            71
+          ],
+          "dirty": [
+            629,
+            598,
+            602,
+            599,
+            596,
+            606
+          ],
+          "adaptive": [
+            84,
+            83,
+            81,
+            82,
+            80,
+            84
+          ]
+        },
+        "medianMs": {
+          "full": 72,
+          "dirty": 600.5,
+          "adaptive": 82.5
+        }
+      }
+    ]
+  }
+}
+```
+
+Run `node scripts/nexusvi_core_compositor.js`. Native CI pending.

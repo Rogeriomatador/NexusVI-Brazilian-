@@ -36,6 +36,7 @@ on:
       - 'scripts/nexusvi_batch_cost.js'
       - 'scripts/nexusvi_dirty_tiles.js'
       - 'scripts/nexusvi_tile_binning.js'
+      - 'scripts/nexusvi_core_compositor.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -266,6 +267,10 @@ jobs:
       - name: Verify independent CPU spatial tile binning
         run: |
           node scripts/nexusvi_tile_binning.js
+          exit $LASTEXITCODE
+      - name: Verify and measure independent integrated CPU compositor
+        run: |
+          node scripts/nexusvi_core_compositor.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |
