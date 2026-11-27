@@ -811,3 +811,37 @@ Hit bytes count logical payload volume served by hits, including repeated
 reads. Metadata cost is excluded. Victim inspections are operation counts,
 not wall time. No physical cache, GPU or runtime integration. Native CI
 pending. Run `node scripts/nexusvi_cache_weighted.js`.
+
+## Independent second-touch admission for weighted cache
+
+Weighted CI 45991247013 passed on both platforms, matching prior hit counts
+(23529 FIFO, 24805 LRU, 25190 largest4). New policy wraps byte-budget LRU:
+first eligible miss remembers only its key in bounded FIFO history; a
+second occurrence while remembered admits and removes that history key.
+Resident hits update LRU; oversized objects bypass without modifying
+history. Evicted residents must qualify again. Compare two history limits
+(cap/128 and cap/32 keys), both excluding metadata from logical byte budget.
+Independent timestamp/array model checks every outcome, byte count, LRU
+order and history uniqueness. Six crafted checks and 16384
+exhaustive short histories passed in JS isolate; 24 traces, 288000 comparative
+accesses. Isolate assertion shim compares object keys independent of order.
+Additional seed 104729 is separated from the 16 prior traces.
+Observed totals:
+
+| Policy | Requests | Hits | Hit bytes | Evictions | Filtered first misses | Peak history keys |
+|---|---:|---:|---:|---:|---:|---:|
+| lru | 96000 | 37498 | 10906240 | 54025 | 0 | 0 |
+| second | 96000 | 40851 | 11758208 | 7450 | 43394 | 128 |
+| second4 | 96000 | 40831 | 11738464 | 12069 | 38825 | 512 |
+
+Additional seed alone:
+
+| Policy | Hits | Hit bytes | Evictions |
+|---|---:|---:|---:|
+| lru | 12693 | 3668192 | 17867 |
+| second | 13720 | 3926848 | 2492 |
+| second4 | 13765 | 3950144 | 3981 |
+
+Filtered misses are not hits. Metadata key counts are not physical memory
+costs. Extra seeds reuse workload families; no timing or runtime gain
+claimed. Native CI pending. Run `node scripts/nexusvi_cache_admission.js`.
