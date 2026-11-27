@@ -265,3 +265,40 @@ assertions; the native Node CLI is scheduled for cross-platform CI.
 The experiment comprises 54,000 allocation requests in total, 18,000 per
 policy. These are deterministic logical results, not runtime measurements.
 No universal policy recommendation or inherited runtime change is implied.
+
+## Expanded held-out allocation experiment
+
+The original nine 2000-request traces remain unchanged. A separate holdout
+uses 800 requests per trace, seeds 271828 and 314159, three existing profiles
+and capacities 4096 and 8192 bytes (12 traces, 9600 requests per policy).
+Compare first-fit, best-fit, and limits of 2, 4, 8 and 16 eligible candidates.
+These are candidate limits, not probe limits. A crafted 17-gap test verifies
+all limits and address selection. The independent bitmap oracle still checks
+every placement, accounting and reclamation. The bitmap free count uses a
+loop rather than a callback reduction to reduce test overhead.
+
+Observed in JS isolate, 2026-11-27, with equivalent strict assertions:
+
+| Policy | Accepted | Failed | Probes | Mean fragmentation | Reclaimed |
+|---|---:|---:|---:|---:|---:|
+| first | 7611 | 1989 | 142724 | 64.9187% | 12/12 |
+| best | 7639 | 1961 | 244749 | 60.4500% | 12/12 |
+| hybrid2 | 7647 | 1953 | 179225 | 61.4333% | 12/12 |
+| hybrid4 | 7646 | 1954 | 216549 | 60.2784% | 12/12 |
+| hybrid8 | 7639 | 1961 | 238485 | 60.3236% | 12/12 |
+| hybrid16 | 7638 | 1962 | 244071 | 59.9886% | 12/12 |
+
+| Policy | Accepted at 4096 bytes | Accepted at 8192 bytes |
+|---|---:|---:|
+| first | 3371 | 4240 |
+| best | 3399 | 4240 |
+| hybrid2 | 3398 | 4249 |
+| hybrid4 | 3380 | 4266 |
+| hybrid8 | 3415 | 4224 |
+| hybrid16 | 3398 | 4240 |
+
+Run `node scripts/nexusvi_fragmentation.js --holdout`. The new traces are
+held out relative to the prior Hybrid4 experiment but reuse its workload
+families. This is not a comprehensive workload distribution or a timing
+benchmark; selecting a policy from these results would require additional
+independent validation. CI reruns original and held-out experiments.

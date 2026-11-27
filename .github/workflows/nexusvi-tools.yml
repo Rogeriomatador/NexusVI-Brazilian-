@@ -146,4 +146,6 @@ jobs:
       - name: Compare logical allocation policies
         run: |
           node scripts/nexusvi_fragmentation.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_fragmentation.js --holdout
           exit $LASTEXITCODE
