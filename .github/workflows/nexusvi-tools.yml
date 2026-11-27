@@ -43,6 +43,7 @@ on:
       - 'scripts/nexusvi_gl_transfers.py'
       - 'scripts/nexusvi_gl_framebuffer.py'
       - 'scripts/nexusvi_gl_cache.py'
+      - 'scripts/nexusvi_native_evidence.py'
       - 'scripts/nexusvi_vulkan_probe.py'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
@@ -318,6 +319,15 @@ jobs:
         env:
           EGL_PLATFORM: surfaceless
           LIBGL_ALWAYS_SOFTWARE: '1'
-        run: python3 scripts/nexusvi_gl_cache.py
+        run: |
+          python3 scripts/nexusvi_native_evidence.py --self-test
+          python3 scripts/nexusvi_native_evidence.py > native-gl-evidence.json
+          cat native-gl-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexusvi-native-gl-${{ github.run_attempt }}
+          path: native-gl-evidence.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Discover Vulkan software device (no workload)
         run: python3 scripts/nexusvi_vulkan_probe.py
