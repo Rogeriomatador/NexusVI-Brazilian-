@@ -108,8 +108,9 @@ function tests(){
 if(require.main===module){
   assert.equal(process.argv.length,2);
   const count=tests();
+  const context=require('./nexusvi_timing_context.js').observe();
   const origin=process.hrtime.bigint();
   const result=benchmark(()=>Number(process.hrtime.bigint()-origin));
-  console.log(JSON.stringify({...result,self_tests:count,platform:process.platform,arch:process.arch,node:process.version},null,2));
+  console.log(JSON.stringify({...result,context,self_tests:count,platform:process.platform,arch:process.arch,node:process.version},null,2));
 }
 module.exports={tests,suite,benchmark};

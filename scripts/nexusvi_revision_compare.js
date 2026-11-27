@@ -25,6 +25,7 @@ function compare(base,next,baseRev,nextRev){
   }
   return {scope:'independent_revision_comparison_descriptive_only',baseline_revision:baseRev,candidate_revision:nextRev,
     declared_environment:{platform:a.platform,arch:a.arch,node:a.node},
+    observed_context:require('./nexusvi_timing_context.js').compareContext(base.context,next.context),
     samples_per_policy_per_revision:18,cross_run_pairing:false,hardware_equivalence_verified:false,
     statistical_regression_proven:false,policies,relative_to_linear:relative};
 }

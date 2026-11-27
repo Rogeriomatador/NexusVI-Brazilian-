@@ -619,3 +619,38 @@ Run `node scripts/nexusvi_revision_compare.js BASE_DIR BASE_REV CANDIDATE_DIR CA
 assertions; 14 manifest and 11 timing core checks still passed.
 Three additional filesystem tests and actual current CI bundle verification
 are scheduled in native CI. No two real revision archives compared yet.
+
+## Observed timing context and real archive comparison
+
+CI runs 45988989158 (0275bbd) and 45989302040 (ce4b73d) passed. All four
+ZIP archives downloaded; SHA-256 of each archive matched GitHub metadata;
+all eight report byte lengths and hashes matched their manifests. Python
+independently recomputed the median/P95/min/max from 216 duration samples.
+The four timing workload source Git blobs were identical across revisions:
+
+| Source | Git blob |
+|---|---|
+| nexusvi_arena_timing.js | b60d4a98f7391e2be06b60924c9e55dac43cccdf |
+| nexusvi_fragmentation.js | e6e4020992a19299985ea1b4cf53285490e320ae |
+| nexusvi_indexed_arena.js | 2098c7c490be0572cf447f8e10267e4783ba73ff |
+| nexusvi_sparse_arena.js | c8f62f9802bbd5897489863e739889c10f48e9e1 |
+
+Candidate/baseline median time ratios from the downloaded reports:
+
+| Platform | Linear | Dense | Sparse |
+|---|---:|---:|---:|
+| Linux | 1.192661 | 1.138408 | 1.312128 |
+| Windows | 2.032149 | 1.553245 | 1.734427 |
+
+The observed variability despite identical workload blobs shows why separate
+runner timings do not prove code regressions. No causal attribution made.
+New reports observe SHA-256 and byte sizes of five fixed local source files
+before timing, CPU model if uniform, logical CPU count, OS release and V8
+version. The report validator checks the optional context; comparison
+reports differing/unknown fields and matching observed digests, never
+claims hardware equivalence or signed provenance. Old reports remain
+readable, with context unavailable. Hashes reflect raw checkout bytes,
+including line endings. This does not verify loaded code against subsequent
+file changes, CPU frequency, host load, or physical hardware identity.
+Ten context core cases, 11 timing and 13 comparison cases plus one context
+integration passed in a JS isolate; actual native capture pending CI.

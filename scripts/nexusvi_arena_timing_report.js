@@ -6,6 +6,7 @@ const orders=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].map(o=>o.map(i=>n
 const median=a=>{const s=a.slice().sort((x,y)=>x-y),n=s.length;return n%2?s[n>>1]:(s[n/2-1]+s[n/2])/2;};
 const summary=a=>({median_ns:median(a),p95_ns:a.slice().sort((x,y)=>x-y)[Math.ceil(a.length*.95)-1],min_ns:Math.min(...a),max_ns:Math.max(...a)});
 function analyze(d){
+  if(d&&d.context!==undefined)require('./nexusvi_timing_context.js').validate(d.context);
   assert(d&&d.scope==='independent_instrumented_logical_allocator_timing_only');
   assert.equal(d.rounds,18);assert.equal(d.warmup_rounds,3);assert.equal(d.traces,12);
   assert.equal(d.requests_per_sample,9600);assert.equal(d.accepted_per_sample,7611);

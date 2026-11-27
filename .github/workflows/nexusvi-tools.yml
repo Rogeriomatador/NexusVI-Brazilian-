@@ -21,6 +21,7 @@ on:
       - 'scripts/nexusvi_sparse_arena_v4.js'
       - 'scripts/nexusvi_sparse_scaling.js'
       - 'scripts/nexusvi_arena_timing.js'
+      - 'scripts/nexusvi_timing_context.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -172,6 +173,8 @@ jobs:
           exit $LASTEXITCODE
       - name: Measure instrumented logical arena replay timing
         run: |
+          node scripts/nexusvi_timing_context.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/nexusvi_arena_timing_report.js --self-test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/nexusvi_arena_timing.js | Set-Content -Encoding utf8 arena-timing.json
