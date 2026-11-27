@@ -741,3 +741,35 @@ latency, timing or production integration. Cyclic traces intentionally do
 not depend on seed and are repeated for uniform experiment structure;
 counts are not independent statistical samples. Native CI pending.
 Run `node scripts/nexusvi_cache_policies.js`.
+
+## Adaptive logical segmented cache with bounded ghost history
+
+Prior cache CI 45990631346 passed on both platforms, with identical totals
+(35159 FIFO, 35518 LRU, 37243 SLRU hits over 96000 requests per policy).
+The adaptive experiment preserves those baselines. It uses a protected
+target bounded to [1,cap-1] and a ghost history of at most cap evicted keys,
+marked by whether reused. A ghost hit is still a miss; it adjusts the
+target by one (previously reused increases protection, otherwise decreases
+it), then admits the key to protection. Demotions preserve the reuse mark.
+An independent array model checks each hit, eviction, resident/ghost order,
+target and uniqueness. Four crafted checks and 46875
+exhaustive length-six histories passed in a JS isolate using equivalent
+strict assertions. The original 16 traces plus 12 additional noncyclic
+traces were replayed by all four policies (672000 accesses). Observed hits:
+
+| Group | Profile | Requests per policy | FIFO | LRU | SLRU | Adaptive | Ghost hits | Target changes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| prior | uniform | 24000 | 6058 | 6029 | 6068 | 6012 | 5764 | 5441 |
+| prior | hot_scan | 24000 | 10335 | 10335 | 12139 | 12139 | 5 | 5 |
+| prior | phase_shift | 24000 | 18766 | 19154 | 19036 | 19121 | 401 | 225 |
+| prior | cyclic | 24000 | 0 | 0 | 0 | 0 | 23676 | 468 |
+| additional | uniform | 24000 | 5985 | 5995 | 5850 | 6003 | 5864 | 5620 |
+| additional | hot_scan | 24000 | 10336 | 10336 | 12141 | 12141 | 3 | 3 |
+| additional | phase_shift | 24000 | 18543 | 18972 | 18863 | 18938 | 428 | 238 |
+
+Ghost keys are additional metadata (at most as many as resident slots),
+not cached values or free memory. This is a heuristic, not ARC, and no
+universal benefit or real memory/latency gain is claimed. The same workload
+families are reused; additional seeds are not independent workload classes.
+Cyclic traces are seed-independent; retained solely for baseline comparison.
+Native CI pending. Run `node scripts/nexusvi_cache_adaptive.js`.
