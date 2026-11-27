@@ -1,3 +1,24 @@
+# NexusVI — Brazilian compatibility research
+
+NexusVI is an independent GPL-3.0-or-later development fork of
+[VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD).
+Our work focuses on reproducible compatibility research, cross-vendor testing,
+stability and performance evaluation using synthetic workloads and authorized software.
+
+- [Development charter and provenance](docs/nexusvi-development.md)
+- Original base: Belobug's `a-publier` revision `4eb6cfdf`.
+- The earlier [XCL-based NexusVI](https://github.com/Rogeriomatador/NexusVI) is
+  a separate GPL-2.0-only project. Its source is not incorporated here.
+- No proprietary game data, leaked material or circumvention tools are part of
+  the NexusVI contribution. Preserve upstream copyright and attribution.
+
+**Validation status:** the inherited results below are upstream reports, not
+NexusVI measurements. No independent hardware performance claim is made yet.
+
+---
+
+## Original upstream README (preserved)
+
 # VIctory on an RX 7900 XTX
 
 A fork of [VIctory](https://github.com/Marvisak/VIctory), a compatibility layer
