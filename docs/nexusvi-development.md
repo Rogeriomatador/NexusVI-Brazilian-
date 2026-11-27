@@ -38,8 +38,10 @@ and does not load any external software or game. Its unit tests can be run
 with `rustc --edition=2024 --test scripts/nexusvi_sample_stats.rs -o sample_stats_tests`.
 Build the CLI with `rustc --edition=2024 scripts/nexusvi_sample_stats.rs -o sample_stats`.
 Supply one or more whitespace-separated numeric samples via stdin.
-The p95 uses the nearest-rank definition; the median averages the two middle
-values for an even number of samples. These statistics alone do not establish
+P95 and P99 use the nearest-rank definition; the median uses a numerical midpoint
+for an even number of samples. The output includes min/max and sample count.
+Input is limited to 8 MiB. The independent workflow runs only this standalone
+program's tests, not the inherited runtime or any proprietary workload. These statistics alone do not establish
 a performance improvement.
 
 ## Next independent work
