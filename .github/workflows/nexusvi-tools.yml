@@ -11,6 +11,7 @@ on:
       - 'scripts/nexusvi_range_arena.rs'
       - 'scripts/nexusvi_graphics_verify.js'
       - 'scripts/nexusvi_strict_json.js'
+      - 'scripts/nexusvi_evidence_manifest.js'
       - 'scripts/nexusvi_fragmentation.js'
       - 'scripts/nexusvi_indexed_arena.js'
       - 'scripts/nexusvi_sparse_arena.js'
@@ -192,3 +193,22 @@ jobs:
         run: |
           node scripts/nexusvi_sparse_scaling.js
           exit $LASTEXITCODE
+      - name: Create and verify independent evidence manifest
+        run: |
+          $revision = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $revision -ne $env:GITHUB_SHA) { throw 'Unexpected checkout revision' }
+          node scripts/nexusvi_evidence_manifest.js --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_evidence_manifest.js create . $revision
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/nexusvi_evidence_manifest.js verify . $revision
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexusvi-independent-evidence-${{ matrix.os }}-${{ github.run_attempt }}
+          path: |
+            arena-timing.json
+            synthetic-graphics.json
+            evidence-manifest.json
+          if-no-files-found: error
+          retention-days: 30

@@ -572,3 +572,27 @@ It does not authenticate measurement origin. The parser passed 9
 valid and 18 rejected cases in a JS isolate; both existing
 fixture suites (26 graphics and 11 timing)
 passed and duplicate scope fields were rejected. Native CLI/CI checks pending.
+
+## Independent evidence manifest
+
+The fixed evidence set contains arena-timing.json (measured instrumented
+logical replay) and synthetic-graphics.json (fixture, not hardware evidence).
+The manifest records exact byte lengths, SHA-256 digests, and the expected
+40-character Git revision. CI independently checks its checkout HEAD against
+GITHUB_SHA, creates the manifest exclusively, verifies it, and uploads the
+three files per OS with 30-day retention. Files are bounded to 4 MiB; manifest
+input to 64 KiB. Only the two fixed filenames are read; strict JSON and exact
+schema validation reject ambiguous members and unexpected fields. Regular
+file checks reject symlinks in the ordinary non-concurrent use case; this is
+not a hostile concurrent filesystem sandbox. The manifest is unsigned and
+cannot prove origin, execution or authenticity if both data and manifest are
+replaced. It does not hash every dependency or guarantee reproducibility
+across different runners. Compare against a separately trusted revision and
+artifact source. No private hardware report is uploaded.
+
+Run `node scripts/nexusvi_evidence_manifest.js verify DIRECTORY REVISION`.
+14 core cases passed in a JS isolate using equivalent strict assertions
+and deterministic test digests. Actual SHA-256 known-vector and filesystem
+checks (including same-length alteration and missing file) are in native CI;
+no native result is claimed before execution. Previous strict JSON CI run
+45988704060 completed successfully on both platforms.
