@@ -864,3 +864,49 @@ No native timing claim yet. Native CI will measure all four profiles
 (216 samples, 5184000 measured accesses), recording raw samples and
 within-round ratios. Existing algorithms unchanged except oracle exports.
 Run `node scripts/nexusvi_cache_timing.js`.
+
+## Independent size-sensitive logical admission
+
+Native timing CI 45991947495 passed on both platforms. Median paired LRU
+/ candidate time ratio (greater than one favors candidate):
+
+| Runner | Profile | Second | Second4 | Second faster rounds |
+|---|---|---:|---:|---:|
+| standalone (windows-latest) | uniform | 1.051032 | 1.055027 | 13/18 |
+| standalone (windows-latest) | hot_scan | 1.114386 | 1.012021 | 16/18 |
+| standalone (windows-latest) | small_hot | 1.051102 | 0.943801 | 11/18 |
+| standalone (windows-latest) | phase_shift | 0.958515 | 1.012759 | 6/18 |
+| standalone (ubuntu-latest) | uniform | 1.045228 | 0.998409 | 16/18 |
+| standalone (ubuntu-latest) | hot_scan | 1.035986 | 0.859463 | 18/18 |
+| standalone (ubuntu-latest) | small_hot | 1.020506 | 0.856025 | 15/18 |
+| standalone (ubuntu-latest) | phase_shift | 0.933595 | 0.949370 | 3/18 |
+
+These timings include recording outcomes but not actual payload I/O.
+New size-sensitive admission uses fixed thresholds (<=64 logical bytes:
+first touch; 65–256: second; >256: third), with the same history key
+limit as second-touch. History counts are bounded to 1 or 2 and refresh
+recency on repeat. Oversized objects bypass; resident hits update LRU.
+This heuristic deliberately favors small objects; no threshold tuning or
+universal optimality claimed. Independent timestamp and array oracle checks
+every event, eviction, resident/history order and capacity. Six crafted
+checks and 16384 exhaustive histories passed in JS isolate;
+32 traces (384000 comparative accesses) including eight additional traces
+(seed 130363). Observed totals:
+
+| Policy | Requests | Hits | Hit bytes | Evictions |
+|---|---:|---:|---:|---:|
+| lru | 128000 | 50187 | 14645120 | 71880 |
+| second | 128000 | 54660 | 15774560 | 9881 |
+| size | 128000 | 57222 | 15084256 | 22654 |
+
+Additional seed alone:
+
+| Policy | Hits | Hit bytes | Evictions |
+|---|---:|---:|---:|
+| lru | 12689 | 3738880 | 17855 |
+| second | 13809 | 4016352 | 2431 |
+| size | 14482 | 3840576 | 5567 |
+
+Metadata costs excluded from logical capacity; no payload memory or
+native timing claim for new variant. Native CI pending.
+Run `node scripts/nexusvi_cache_size_admission.js`.

@@ -29,6 +29,7 @@ on:
       - 'scripts/nexusvi_cache_weighted.js'
       - 'scripts/nexusvi_cache_admission.js'
       - 'scripts/nexusvi_cache_timing.js'
+      - 'scripts/nexusvi_cache_size_admission.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -231,6 +232,10 @@ jobs:
       - name: Measure independent byte-cache admission overhead
         run: |
           node scripts/nexusvi_cache_timing.js
+          exit $LASTEXITCODE
+      - name: Verify independent size-sensitive cache admission
+        run: |
+          node scripts/nexusvi_cache_size_admission.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |
