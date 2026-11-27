@@ -13,7 +13,7 @@ def bind(lib, name, restype, *args):
     f.restype, f.argtypes = restype, args
     return f
 
-def run():
+def run(extra=None):
     os.environ.setdefault('EGL_PLATFORM', 'surfaceless')
     e, g = C.CDLL('libEGL.so.1'), C.CDLL('libGL.so.1')
     get = bind(e, 'eglGetDisplay', P, P)
@@ -73,6 +73,7 @@ def run():
             if error() or bytes(buf) != expected(layers):
                 raise RuntimeError('OpenGL error or pixel mismatch at frame %d' % frame)
         print(json.dumps({'scope': 'independent_egl_opengl_clear_readback', 'egl': f'{major.value}.{minor.value}', 'vendor': string(0x1F00).decode(), 'renderer': renderer, 'version': string(0x1F02).decode(), 'physical_gpu_verified': False, 'frames': 64, 'pixels': 64*W*H, 'byte_comparisons': 64*W*H*4}))
+        if extra is not None: extra(g, renderer)
     finally:
         current(d, None, None, None)
         if ctx: dc(d, ctx)

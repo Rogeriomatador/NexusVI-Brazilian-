@@ -39,6 +39,8 @@ on:
       - 'scripts/nexusvi_core_compositor.js'
       - 'scripts/nexusvi_core_v2.js'
       - 'scripts/nexusvi_egl_control.py'
+      - 'scripts/nexusvi_gl_pipeline.py'
+      - 'scripts/nexusvi_vulkan_probe.py'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -308,9 +310,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Mesa software graphics
-        run: sudo apt-get update && sudo apt-get install -y libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri libvulkan1 mesa-vulkan-drivers
       - name: Verify native API pixel readback (software only)
         env:
           EGL_PLATFORM: surfaceless
           LIBGL_ALWAYS_SOFTWARE: '1'
-        run: python3 scripts/nexusvi_egl_control.py
+        run: python3 scripts/nexusvi_gl_pipeline.py
+      - name: Discover Vulkan software device (no workload)
+        run: python3 scripts/nexusvi_vulkan_probe.py
