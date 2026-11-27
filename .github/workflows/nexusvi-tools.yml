@@ -34,6 +34,7 @@ on:
       - 'scripts/nexusvi_batch_coalesce.js'
       - 'scripts/nexusvi_batch_adaptive.js'
       - 'scripts/nexusvi_batch_cost.js'
+      - 'scripts/nexusvi_dirty_tiles.js'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -256,6 +257,10 @@ jobs:
       - name: Evaluate independent batch cost sensitivity
         run: |
           node scripts/nexusvi_batch_cost.js
+          exit $LASTEXITCODE
+      - name: Verify independent CPU dirty-tile framebuffer
+        run: |
+          node scripts/nexusvi_dirty_tiles.js
           exit $LASTEXITCODE
       - name: Create and verify independent evidence manifest
         run: |

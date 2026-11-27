@@ -1008,3 +1008,44 @@ Native CI pending. Run `node scripts/nexusvi_batch_adaptive.js`.
 Prior adaptive CI 45995247153 passed on both platforms. Compare abstract nonnegative integer costs for writes, reads and logical waiting, using exact BigInt arithmetic. Five checks and 144 illustrative scenarios passed in JS isolate. Grid is not a probability distribution; buffer overhead and physical timing excluded. Native CI pending.
 
 [{"profile":"uniform","wins":{"fixed16":0,"fixed64":9,"adaptive":0},"ties":27,"scenarios":36},{"profile":"hot","wins":{"fixed16":24,"fixed64":12,"adaptive":0},"ties":0,"scenarios":36},{"profile":"repeated","wins":{"fixed16":27,"fixed64":0,"adaptive":0},"ties":9,"scenarios":36},{"profile":"mixed","wins":{"fixed16":24,"fixed64":12,"adaptive":0},"ties":0,"scenarios":36}]
+
+## Independent CPU dirty-tile framebuffer
+
+Original opaque rectangle compositor with fixed 128x96 output and 16x16 tiles. Dirty regions include old/new bounds for geometry, color and z-order changes, additions and removals. Stable order is z then ID. Each dirty tile is cleared and composited from all intersecting layers. A separate pixel-major reference verifies every pixel, including clipping, overlap and unchanged frames. No GPU, proprietary assets, inherited runtime or display timing. Counts measure cleared/redrawn pixel area, not total computation; paint writes and reference validation are separate. Only opaque rectangles, not a general renderer.
+
+Local JS isolate: 12 crafted checks, 720 frames, 8847360 exact pixel comparisons; four profiles, three fixed seeds. Results:
+
+```json
+[
+  {
+    "profile": "static",
+    "frames": 180,
+    "fullPixels": 2211840,
+    "redrawPixels": 28928,
+    "paintPixels": 21300
+  },
+  {
+    "profile": "localized",
+    "frames": 180,
+    "fullPixels": 2211840,
+    "redrawPixels": 219904,
+    "paintPixels": 178510
+  },
+  {
+    "profile": "scroll",
+    "frames": 180,
+    "fullPixels": 2211840,
+    "redrawPixels": 858880,
+    "paintPixels": 523455
+  },
+  {
+    "profile": "churn",
+    "frames": 180,
+    "fullPixels": 2211840,
+    "redrawPixels": 884224,
+    "paintPixels": 549386
+  }
+]
+```
+
+Run `node scripts/nexusvi_dirty_tiles.js`. Native CI scheduled, not yet confirmed. No FPS improvement claimed.
