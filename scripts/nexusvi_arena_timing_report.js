@@ -53,7 +53,7 @@ if(require.main===module){
       assert.equal(process.argv.length,3);
       const fs=require('node:fs'),fd=fs.openSync(process.argv[2],'r');let raw;
       try{assert(fs.fstatSync(fd).isFile());const b=Buffer.alloc(262145);let n=0;while(n<b.length){const m=fs.readSync(fd,b,n,b.length-n,null);if(!m)break;n+=m;}assert(n<=262144);raw=new TextDecoder('utf-8',{fatal:true}).decode(b.subarray(0,n));}finally{fs.closeSync(fd);}
-      console.log(JSON.stringify(analyze(JSON.parse(raw)),null,2));
+      console.log(JSON.stringify(analyze(require('./nexusvi_strict_json.js').parseStrict(raw)),null,2));
     }
   }catch(e){console.error('Rejected: '+e.message);process.exitCode=1;}
 }

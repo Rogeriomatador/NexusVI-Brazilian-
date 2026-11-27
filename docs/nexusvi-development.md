@@ -548,3 +548,27 @@ with three warmup rounds and checks every result outside the timed region.
 Capacities are logical bytes, not real memory mappings. No inherited runtime
 changes, physical GPU measurement or game benchmark.
 Run `node scripts/nexusvi_sparse_scaling.js`.
+
+## Scaling timing results and strict report JSON input
+
+CI run 45988404724 passed both platforms. Scaling timings, nanoseconds:
+
+| Platform | Capacity | V2 median | V4 median | Paired ratio | V4 wins |
+|---|---:|---:|---:|---:|---:|
+| linux | 8192 | 4237248 | 4237548.5 | 0.995862 | 7/18 |
+| linux | 16384 | 5073205.5 | 5122728 | 0.987492 | 4/18 |
+| win32 | 8192 | 4095000 | 4124600 | 0.989911 | 3/18 |
+| win32 | 16384 | 4944950 | 5012350 | 0.984032 | 3/18 |
+
+No production allocator selected. Preserve the negative and mixed results.
+
+Both standalone graphics and timing report CLI readers now reject duplicate
+JSON members, including equivalent escaped names, before native JSON parsing.
+The bounded scan checks grammar, finite numbers, depth <=64 (root depth 0),
+500000 values/member names and 4 Mi UTF-16 code units; existing file byte
+limits remain unchanged. Object keys are tracked separately at each level.
+This addresses ambiguous duplicate fields previously documented as a limitation.
+It does not authenticate measurement origin. The parser passed 9
+valid and 18 rejected cases in a JS isolate; both existing
+fixture suites (26 graphics and 11 timing)
+passed and duplicate scope fields were rejected. Native CLI/CI checks pending.

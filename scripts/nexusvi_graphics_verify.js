@@ -149,7 +149,7 @@ function main(){
       need(n<=MAX_BYTES,"input exceeds 4 MiB");
       raw=new TextDecoder("utf-8",{fatal:true}).decode(buf.subarray(0,n));
     }finally{fs.closeSync(fd);}
-    console.log(JSON.stringify(verify(JSON.parse(raw)),null,2));
+    console.log(JSON.stringify(verify(require('./nexusvi_strict_json.js').parseStrict(raw)),null,2));
   }catch(e){console.error("Rejected: "+e.message);process.exitCode=1;}
 }
 if(require.main===module)main();
