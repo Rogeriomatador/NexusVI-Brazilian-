@@ -331,3 +331,39 @@ alone do not imply speedup. The dense index alone takes 32768 bytes for a
 This is an intentionally bounded correctness experiment, not a production
 allocator or a recommendation to integrate into the inherited runtime.
 Run `node scripts/nexusvi_indexed_arena.js`; native CI repeats the checks.
+
+## Sparse logical AVL first-fit experiment
+
+An AVL tree stores exactly one node per free interval, augmented with subtree
+maximum raw free length. Address-ordered traversal and explicit alignment
+checks preserve first-fit choices. An end-address map supports coalescing.
+Every allocation is compared with an independent occupancy reference; each
+step validates exact free intervals, AVL balance, heights, maxima and live
+byte accounting. Six crafted cases include monotonic freeing in both orders.
+Observed JS-isolate execution (equivalent strict assertions), same 12 traces
+and 9600 requests as dense index experiment:
+
+| Metric | Value |
+|---|---:|
+| accepted | 7611 |
+| failed | 1989 |
+| linearProbes | 142724 |
+| indexVisits | 56568 |
+| candidates | 9164 |
+| mutationVisits | 327088 |
+| recalculations | 196688 |
+| rotations | 15620 |
+
+| Capacity | Peak AVL nodes | Peak height |
+|---|---:|---:|
+| 4096 | 53 | 7 |
+| 8192 | 61 | 7 |
+
+All 12 traces reclaimed their entire logical arena. Search visits count
+non-null AVL nodes; mutation visits include insertion/deletion traversal,
+successor traversal and lookup. Recalculations count height/max refreshes;
+rotations are separately recorded, not independent of recalculations. These
+counts are not directly interchangeable with dense tree writes or CPU time.
+Node counts describe structural size, not measured JavaScript heap bytes.
+No GPU, physical memory or inherited runtime is measured. Native CI runs
+`node scripts/nexusvi_sparse_arena.js`.
