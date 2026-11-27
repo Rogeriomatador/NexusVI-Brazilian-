@@ -60,7 +60,9 @@ static std::vector<uint32_t> read_shader(const char* path){
     require(bool(f)&&words[0]==0x07230203u,"shader header");return words;
 }
 struct Result{uint32_t vendor,device,driver,api,type,heap;uint64_t allocation,heap_bytes,checks,dispatches;double wall_ms;};
-static Result run(const std::vector<uint32_t>& code){
+static Result run(const std::vector<uint32_t>& code,const std::string& mode){
+    require(mode=="software"||mode=="nvidia"||mode=="amd"||mode=="intel","unknown mode");
+    const uint32_t vendor=mode=="nvidia"?0x10deu:mode=="amd"?0x1002u:mode=="intel"?0x8086u:0u;
     Session s;
     auto app=info<VkApplicationInfo>(VK_STRUCTURE_TYPE_APPLICATION_INFO);
     app.pApplicationName="NexusVI independent compute";app.apiVersion=VK_API_VERSION_1_0;
@@ -80,10 +82,11 @@ static Result run(const std::vector<uint32_t>& code){
     require(count>0&&count<=256,"device count");
     std::vector<VkPhysicalDevice> devices(count);check(vkEnumeratePhysicalDevices(s.instance,&count,devices.data()),"enumerate devices");
     VkPhysicalDevice physical{};uint32_t family=0;VkPhysicalDeviceProperties properties{};
-    // CI deliberately selects a software CPU device; no physical GPU claim.
+    // Explicit mode; a driver-reported device type is not independent hardware verification.
     for(uint32_t d=0;d<count&&!physical;++d){
         VkPhysicalDeviceProperties p{};vkGetPhysicalDeviceProperties(devices[d],&p);
-        if(p.deviceType!=VK_PHYSICAL_DEVICE_TYPE_CPU)continue;
+        if(mode=="software") { if(p.deviceType!=VK_PHYSICAL_DEVICE_TYPE_CPU)continue; }
+        else if(p.vendorID!=vendor||(p.deviceType!=VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU&&p.deviceType!=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU))continue;
         uint32_t n=0;vkGetPhysicalDeviceQueueFamilyProperties(devices[d],&n,nullptr);
         if(!n||n>1024)continue;
         std::vector<VkQueueFamilyProperties> queues(n);vkGetPhysicalDeviceQueueFamilyProperties(devices[d],&n,queues.data());
@@ -91,7 +94,7 @@ static Result run(const std::vector<uint32_t>& code){
             physical=devices[d];family=i;properties=p;break;
         }
     }
-    require(physical!=VK_NULL_HANDLE,"CPU Vulkan compute device not found");
+    require(physical!=VK_NULL_HANDLE,"requested Vulkan compute device not found");
     require(properties.limits.maxComputeWorkGroupInvocations>=64&&properties.limits.maxComputeWorkGroupSize[0]>=64&&properties.limits.maxComputeWorkGroupCount[0]>=nv::groups(nv::capacity),"compute limits");
     constexpr VkDeviceSize bytes=nv::capacity*sizeof(uint32_t);
     require(properties.limits.maxStorageBufferRange>=bytes,"buffer limit");
@@ -184,10 +187,10 @@ static Result run(const std::vector<uint32_t>& code){
 }
 int main(int argc,char** argv){
     try{
-        require(argc==2,"usage: nexusvi_vk_compute trusted-validated.spv");
-        auto result=run(read_shader(argv[1]));
+        require(argc==2||argc==3,"usage: nexusvi_vk_compute trusted-validated.spv [software|nvidia|amd|intel]");
+        auto result=run(read_shader(argv[1]),argc==3?argv[2]:"software");
         require(errors.load()==0,"validation errors");
-        std::cout<<"{\"scope\":\"independent_vulkan_compute_software\",\"vendor_id\":"<<result.vendor
+        std::cout<<"{\"scope\":\"independent_vulkan_compute\",\"vendor_id\":"<<result.vendor
             <<",\"device_id\":"<<result.device<<",\"driver_version\":"<<result.driver<<",\"api_version\":"<<result.api
             <<",\"device_type\":"<<result.type<<",\"heap_index\":"<<result.heap
             <<",\"allocation_bytes\":"<<result.allocation<<",\"heap_capacity_bytes\":"<<result.heap_bytes

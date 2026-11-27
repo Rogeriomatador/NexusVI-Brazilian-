@@ -49,6 +49,7 @@ on:
       - 'scripts/nexusvi_vk_fixture_test.cpp'
       - 'scripts/nexusvi_vk_compute.cpp'
       - 'scripts/nexusvi_vk_compute.comp'
+      - 'scripts/nexusvi_vk_runner.py'
       - 'scripts/nexusvi_arena_timing_report.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
@@ -344,6 +345,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Vulkan software driver and shader tools
         run: sudo apt-get update && sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers vulkan-validationlayers glslang-tools spirv-tools
+      - name: Verify Vulkan runner evidence schema
+        run: python3 scripts/nexusvi_vk_runner.py --self-test
       - name: Verify independent host fixture
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined -O2 scripts/nexusvi_vk_fixture_test.cpp -o nexusvi-vk-fixture
@@ -367,6 +370,7 @@ jobs:
           timeout 60s ./nexusvi-vk-compute control.spv | tee vulkan-original.json
           timeout 60s ./nexusvi-vk-compute control-opt.spv | tee vulkan-optimized.json
           python3 -c "import json; from pathlib import Path; a,b=[json.loads(Path(p).read_text()) for p in ('vulkan-original.json','vulkan-optimized.json')]; assert all(x['dispatches']==120 and x['values_checked']==493560 and x['validation_errors']==0 and x['device_type']==4 and x['physical_gpu_verified'] is False for x in (a,b)); assert (a['vendor_id'],a['device_id'],a['driver_version'])==(b['vendor_id'],b['device_id'],b['driver_version'])"
+          python3 scripts/nexusvi_vk_runner.py --mode software > vulkan-runner.json
           sha256sum control.spv control-opt.spv scripts/nexusvi_vk_compute.cpp scripts/nexusvi_vk_compute.comp scripts/nexusvi_vk_fixture.hpp > vulkan-sources.sha256
       - uses: actions/upload-artifact@v4
         with:
@@ -375,5 +379,6 @@ jobs:
             vulkan-original.json
             vulkan-optimized.json
             vulkan-sources.sha256
+            vulkan-runner.json
           if-no-files-found: error
           retention-days: 30
