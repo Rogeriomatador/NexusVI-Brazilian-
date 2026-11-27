@@ -13,6 +13,7 @@ on:
       - 'scripts/nexusvi_fragmentation.js'
       - 'scripts/nexusvi_indexed_arena.js'
       - 'scripts/nexusvi_sparse_arena.js'
+      - 'scripts/nexusvi_arena_timing.js'
       - 'scripts/NexusVI-Graphics-Control-V2.html'
       - 'scripts/nexusvi_hardware_control.ps1'
       - '.github/workflows/nexusvi-tools.yml'
@@ -158,4 +159,8 @@ jobs:
       - name: Verify sparse logical AVL first-fit arena
         run: |
           node scripts/nexusvi_sparse_arena.js
+          exit $LASTEXITCODE
+      - name: Measure instrumented logical arena replay timing
+        run: |
+          node scripts/nexusvi_arena_timing.js
           exit $LASTEXITCODE

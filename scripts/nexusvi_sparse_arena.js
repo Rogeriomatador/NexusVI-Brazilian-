@@ -119,4 +119,4 @@ function experiment(){
   return {scope:'independent_sparse_logical_arena_only',tests:tests(),results};
 }
 if(require.main===module){assert.equal(process.argv.length,2);console.log(JSON.stringify(experiment(),null,2));}
-module.exports={experiment,replay,tests};
+module.exports={SparseArena,experiment,replay,tests};

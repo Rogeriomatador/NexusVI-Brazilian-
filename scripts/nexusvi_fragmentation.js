@@ -119,4 +119,4 @@ function holdout(){
 }
 function main(){tests();if(process.argv.length===3&&process.argv[2]==='--holdout'){console.log(JSON.stringify(holdout(),null,2));return;}assert.equal(process.argv.length,2);const results=[];for(const profile of ['small','mixed','large'])for(const seed of [42,1337,20261127]){const requests=trace(seed,profile);results.push({profile,seed,results:['first','best','hybrid4'].map(p=>replay(requests,p))});}console.log(JSON.stringify({scope:'independent_logical_arena_only',capacityBytes:CAP,stepsPerTrace:STEPS,results},null,2));}
 if(require.main===module)main();
-module.exports={trace,replay,tests,holdout};
+module.exports={Arena,trace,replay,tests,holdout};

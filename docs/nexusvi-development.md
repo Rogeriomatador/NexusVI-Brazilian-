@@ -367,3 +367,26 @@ counts are not directly interchangeable with dense tree writes or CPU time.
 Node counts describe structural size, not measured JavaScript heap bytes.
 No GPU, physical memory or inherited runtime is measured. Native CI runs
 `node scripts/nexusvi_sparse_arena.js`.
+
+## Controlled logical arena timing
+
+The three existing instrumented First-fit implementations are exported for
+an independent timing harness. The occupancy oracle precomputes placements
+and successful-request release schedules before timing. Each sample replays
+all 12 held-out traces (9600 requests, 7611 accepted); exact placements,
+release success and final free state are checked after stopping the clock.
+Three warmup rounds and 18 measured rounds balance all six execution orders
+three times. Timing uses Node's monotonic hrtime, including construction,
+event dispatch, allocations/releases, internal assertions/counters, result
+writes and final releases; excluding the external oracle and verification.
+Raw per-round nanoseconds and median/P95/min/max are emitted. This compares
+instrumented implementations, not pure search latency or production code.
+GC, JIT, host scheduling and platform differences can affect measurements;
+no automatic speed threshold or cross-platform pooled result is used.
+
+Five harness checks passed in a JS isolate (including a deliberately wrong
+placement and nonadvancing clock). All three implementations also reproduced
+7611 accepted requests in six balanced full-suite rounds using a synthetic
+clock for verification only. No measured timings are claimed from that test.
+The native Node timing run is scheduled in independent CI. No game, physical
+GPU or inherited runtime is involved.
